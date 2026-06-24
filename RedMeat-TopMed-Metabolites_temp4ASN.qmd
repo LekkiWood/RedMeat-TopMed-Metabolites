@@ -64,12 +64,27 @@ if (!requireNamespace("VennDiagram", quietly = TRUE)) {
   - The most recent version of the source code for this README file can be found [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/RedMeat-TopMed-Metabolites_temp4ASN.qmd)
 
   - The most recent source code for creating the output files can be found [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/_targets.R)
-  
+
   # Summary
 
 \newpage
 
 # Data Preparation
+
+## Metabolites
+
+```{r}
+#| label: metab-info
+
+Metabs_db <- targets::tar_read(Metabs_long_clean)
+Metabs_mapping <- targets::tar_read(Mapping_file)
+
+Known_metabs <- Metabs_mapping |>
+  dplyr::filter(Known_Compound == 1) |>
+  dplyr::pull(Metabolite)
+
+```
+
 
 I will add this later... it's complicated why.
 
@@ -111,7 +126,6 @@ path_E5_food <- targets::tar_read(path_e5_ffq_file)
 
 - Exam 5 red meat intake `{r} print(base::unlist(base::strsplit(path_E5_food, split="/"))[7])`
 
-
 ### Coding
 
 #### Predictors
@@ -148,7 +162,7 @@ path_E5_food <- targets::tar_read(path_e5_ffq_file)
 #| label: build-final-sample
 
 phenos <- targets::tar_read(Traits_long)
-Metabs_db <- targets::tar_read(Metabs_long_clean)
+
 
 Traits_db <- phenos |>
   dplyr::filter(idno %in% Metabs_db$idno) |>
@@ -171,8 +185,6 @@ I need to add this too - trying to rush you the actual results ahead of ASN...
 ## Measures
 
 ### Metabolome-wide metabolites
-
-
 
 Metabolome-wide metabolite profiling was conducted in fasted plasma samples using four complementary liquid chromatography tandem mass spectrometry (LC-MS)-based methods that couple distinct metabolite extraction and LC techniques with high resolution, accurate mass (HRAM) MS profiling to provide a hybrid analysis of hundreds of metabolites of confirmed identity and thousands of LC-MS peaks from yet to be identified compounds. Each of the four LC-MS methods is established on dedicated instruments consisting of Shimadzu Nexera UHPLCs coupled to Thermo Q Exactive series orbitrap mass spectrometers and includes measurement of (i) polar and nonpolar lipids using C8 reversed phase LC and positive ion MS (C8-pos); (ii) free fatty acids, bile acids, and metabolites of intermediate polarity using C18 reversed phase LC and negative ion MS (C18-neg); (iii) amino acids, amino acid metabolites, acylcarnitines, dipeptides, and other cationic polar metabolites using hydrophilic interaction liquid chromatography and positive ion MS (HILIC-pos); and (iv) sugars, organic acids, purines, pyrimidines, and other anionic polar metabolites using HILIC and negative ion MS (HILIC-neg).
 
@@ -341,8 +353,142 @@ LASSO_final_db <- LASSO_final$coefficients |>
   tibble::rownames_to_column(var = "Var") |>
   dplyr::filter(Var %in% names(Metabs_db))
 
-LASSO_CWC_final <- targets::tar_read(LASSO_CWC_final_coeffs_db)
+write.csv(LASSO_final_db <- LASSO_final$coefficients |> 
+  as.data.frame() |>
+  tibble::rownames_to_column(var = "Var") |>
+  dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0) |>
+    dplyr::rename(Metabolite = Var) |>
+    dplyr::select(Metabolite, Estimate), "/media/Analyses/RedMeat-TopMed-Metabolites/outputs/Redmeat_LASSO_selected_metabs.csv", row.names = FALSE)
+
+LASSO_CWC_final <- targets::tar_read(LASSO_CWC_final_coeffs)
+
+LASSO_CWC_final_db <- LASSO_CWC_final$coefficients |> 
+  as.data.frame() |>
+  tibble::rownames_to_column(var = "Var") |>
+  dplyr::filter(Var %in% names(Metabs_db))
+
+write.csv(LASSO_CWC_final$coefficients |> 
+  as.data.frame() |>
+  tibble::rownames_to_column(var = "Var") |>
+  dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0) |>
+    dplyr::rename(Metabolite = Var) |>
+    dplyr::select(Metabolite, Estimate), "/media/Analyses/RedMeat-TopMed-Metabolites/outputs/Redmeat_LASSO_CWC_selected_metabs.csv", row.names = FALSE)
 ```
 
+First, we ran a penalized model to identify an optimal set of metabolites that jointly predicted red meat intake at the population level. The full results are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_LASSO_coeffs_2026-06-24.csv). From N=`{r} nrow(LASSO_final_db |> dplyr::filter(Var %in% names(Metabs_db)))` metabolites, N=`{r} nrow(LASSO_final_db |> dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0))` metabolites were selected by the penalized model. A file of all metabolites selected by the penalized model for red meat intake at the population level, with their associated coefficients is available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_LASSO_selected_metabs.csv).  @tbl-known-LASSO-metabs shows those metabolites, plus their respective coefficients, selected by the penalized model as associating with red meat intake at the population level that were also known - or identified - compounds.
 
+[Matthew, most are lipids, which is common (metaboliote panels are enriched for lipids). I think most interesting here are DHA, and EPA - you could give these as examples of fatty acid associations (or inverse associations) with red meat intake in the population level that would lead to negative associations of meat with health, but are not reflected in the within-person effects]
+
+```{r}
+#| label: tbl-known-LASSO-metabs
+#| tbl-cap: Metabolites and coefficients, selected by the penalized model as associating with red meat intake at the population level for known compounds.
+#| cache: FALSE
+
+known_LASSO_metabs <- LASSO_final$coefficients |> 
+  as.data.frame() |>
+  tibble::rownames_to_column(var = "Metabolite") |>
+  dplyr::filter(Metabolite %in% names(Metabs_db) & Metabolite %in% Known_metabs & Estimate != 0) |>
+    dplyr::select(Metabolite, Estimate) |>
+  dplyr::left_join(Metabs_mapping, by = dplyr::join_by(Metabolite)) |>
+  dplyr::select(Original_Metabolite_Name, Estimate) |>
+  gt::gt() |>
+  gt::tab_options(table.width = gt::pct(30)) |>
+  gt::as_latex()
+
+known_LASSO_metabs
+```
+
+**Post ASN - Lekki to add a table of the linear regression results**
+
+First, we ran a penalized model to identify an optimal set of metabolites that jointly predicted the within-person effects of red meat intake. The full results are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_CWC_LASSO_coeffs_2026-06-24.csv). From N=`{r} nrow(LASSO_CWC_final_db |> dplyr::filter(Var %in% names(Metabs_db)))` metabolites, N=`{r} nrow(LASSO_CWC_final_db |> dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0))` metabolites were selected by the penalized model. A file of all metabolites selected by the penalized model for red meat intake at the population level, with their associated coefficients is available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_LASSO_CWC_selected_metabs.csv).  @tbl-known-LASSO-metabs shows those metabolites, plus their respective coefficients, selected by the penalized model as associating with red meat intake at the population level that were also known - or identified - compounds.
+
+[Matthew, most are lipids, which is common (metaboliote panels are enriched for lipids). I think most interesting here are DHA, and EPA - you could give these as examples of fatty acid associations (or inverse associations) with red meat intake in the population level that would lead to negative associations of meat with health, but are not reflected in the within-person effects]
+
+```{r}
+#| label: tbl-known-LASSO-metabs
+#| tbl-cap: Metabolites and coefficients, selected by the penalized model as associating with red meat intake at the population level for known compounds.
+#| cache: FALSE
+
+known_LASSO_metabs <- LASSO_final$coefficients |> 
+  as.data.frame() |>
+  tibble::rownames_to_column(var = "Metabolite") |>
+  dplyr::filter(Metabolite %in% names(Metabs_db) & Metabolite %in% Known_metabs & Estimate != 0) |>
+    dplyr::select(Metabolite, Estimate) |>
+  dplyr::left_join(Metabs_mapping, by = dplyr::join_by(Metabolite)) |>
+  dplyr::select(Original_Metabolite_Name, Estimate) |>
+  gt::gt() |>
+  gt::tab_options(table.width = gt::pct(30)) |>
+  gt::as_latex()
+
+known_LASSO_metabs
+```
+
+**Post ASN - Lekki to add a table of the linear regression results**
+
+@fig-venn-lasso-overlap shows the overlap in metabolites selected by the penalized model for observed associationat the population level vs. those selected by the model for within-person effects 
+
+::: landscape
+```{r}
+#| label: fig-venn-lasso-overlap
+#| fig-cap: "Overlap in XXXXs" 
+#| fig-width: 10
+#| fig-height: 9
+#| cache: FALSE
+
+
+Obs_temp <- LASSO_final_db |> 
+  dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0) 
+
+Obs_temp$Var2 <- "Population level"
+
+CWC_temp <- LASSO_CWC_final_db |> 
+  dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0) 
+
+CWC_temp$Var2 <- "Within Person"
+
+
+Venn_F1 <- rbind(Obs_temp, CWC_temp)
+rm(Obs_temp)
+rm(CWC_temp)
+
+
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+venn.plot <- VennDiagram::venn.diagram(x = list(
+  Venn_F1 |> 
+    dplyr::filter(Var2=="Population level") |> 
+    dplyr::select(Var) |> 
+    unlist(), 
+  Venn_F1 |> 
+    dplyr::filter(Var2=="Within Person") |> 
+    dplyr::select(Var) |> unlist()
+  ), 
+  category.names = c("Population level" , "Within Person"), 
+  filename = NULL, 
+  output = TRUE , 
+  imagetype="png", 
+  height = 500 , 
+  width = 500 , 
+  resolution = 400, 
+  compression = "lzw", 
+  lwd = 0.5, 
+  col=c('blue', 'red'), 
+  fill = c('blue', 'red'),
+  cex = 2, 
+  fontfamily = "sans", 
+  cat.cex = 2, 
+  cat.default.pos = "text", 
+  #cat.pos = c(0, 90, 180), 
+  #cat.dist = c(0.05, 0.05, -0.03), 
+  cat.fontfamily = "sans", 
+  cat.col = c("grey0", 'grey0'),
+  margin=0, 
+  main="",
+  main.cex=0.3)
+#cat.just=list(c(0.2,0), c(0.8,0) , c(0.5,0)))
+
+grid::grid.draw(venn.plot) 
+rm(venn.plot) 
+rm(Venn_F1)
+```
+:::
 
