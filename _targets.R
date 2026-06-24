@@ -406,6 +406,25 @@ list(
   tar_target(LASSO_final_deviance,       lasso_final_results$Deviance),
   tar_target(LASSO_final_optimal_model,  lasso_final_results$final_model),
   tar_target(LASSO_final_coeffs,         lasso_final_results$final_coeffs),
+  tar_target(LASSO_final_coeffs_db,     as.data.frame(LASSO_final_coeffs$coefficients)),
+  
+  #---------Save coeffs ---------#
+  
+  #save CV file for use
+  tar_target(LASSO_filename, paste0("Redmeat_LASSO_coeffs_", Sys.Date(), ".csv")),
+  
+  
+  #export CV as csv
+  tar_target(LASSO_csv,
+             {
+               out_dir  <- "outputs"
+               dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+               out_path <- file.path(out_dir, LASSO_filename)
+               write.csv(LASSO_final_coeffs_db, out_path)
+               out_path
+             },
+             format = "file"
+  ),
 
   #--------------------------------------------------------------------------#
   # --------------Run CWC LASSO  (within effects) ---------------------------#

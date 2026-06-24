@@ -330,3 +330,19 @@ rm(table1)
 ```
 :::
 
+# Results
+
+```{r}
+#| label: read-in-results
+
+LASSO_final <- targets::tar_read(LASSO_final_coeffs)
+LASSO_final_db <- LASSO_final$coefficients |> 
+  as.data.frame() |>
+  tibble::rownames_to_column(var = "Var") |>
+  dplyr::filter(Var %in% names(Metabs_db))
+
+LASSO_CWC_final <- targets::tar_read(LASSO_CWC_final_coeffs_db)
+```
+
+
+
