@@ -353,7 +353,7 @@ LASSO_final_db <- LASSO_final$coefficients |>
   tibble::rownames_to_column(var = "Var") |>
   dplyr::filter(Var %in% names(Metabs_db))
 
-write.csv(LASSO_final_db <- LASSO_final$coefficients |> 
+write.csv(LASSO_final$coefficients |> 
   as.data.frame() |>
   tibble::rownames_to_column(var = "Var") |>
   dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0) |>
@@ -377,14 +377,14 @@ write.csv(LASSO_CWC_final$coefficients |>
 
 First, we ran a penalized model to identify an optimal set of metabolites that jointly predicted red meat intake at the population level. The full results are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_LASSO_coeffs_2026-06-24.csv). From N=`{r} nrow(LASSO_final_db |> dplyr::filter(Var %in% names(Metabs_db)))` metabolites, N=`{r} nrow(LASSO_final_db |> dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0))` metabolites were selected by the penalized model. A file of all metabolites selected by the penalized model for red meat intake at the population level, with their associated coefficients is available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_LASSO_selected_metabs.csv).  @tbl-known-LASSO-metabs shows those metabolites, plus their respective coefficients, selected by the penalized model as associating with red meat intake at the population level that were also known - or identified - compounds.
 
-[Matthew, most are lipids, which is common (metaboliote panels are enriched for lipids). I think most interesting here are DHA, and EPA - you could give these as examples of fatty acid associations (or inverse associations) with red meat intake in the population level that would lead to negative associations of meat with health, but are not reflected in the within-person effects]
+[Matthew, most are lipids, which is common (metabolite panels are enriched for lipids). I think most interesting here are DHA, and EPA - you could give these as examples of fatty acid associations (or inverse associations) with red meat intake in the population level that would lead to negative associations of meat with health, but are not reflected in the within-person effects]
 
 ```{r}
 #| label: tbl-known-LASSO-metabs
 #| tbl-cap: Metabolites and coefficients, selected by the penalized model as associating with red meat intake at the population level for known compounds.
 #| cache: FALSE
 
-known_LASSO_metabs <- LASSO_final$coefficients |> 
+known_LASSO_metabs_tbl <- LASSO_final$coefficients |> 
   as.data.frame() |>
   tibble::rownames_to_column(var = "Metabolite") |>
   dplyr::filter(Metabolite %in% names(Metabs_db) & Metabolite %in% Known_metabs & Estimate != 0) |>
@@ -395,21 +395,21 @@ known_LASSO_metabs <- LASSO_final$coefficients |>
   gt::tab_options(table.width = gt::pct(30)) |>
   gt::as_latex()
 
-known_LASSO_metabs
+known_LASSO_metabs_tbl
 ```
 
 **Post ASN - Lekki to add a table of the linear regression results**
 
-First, we ran a penalized model to identify an optimal set of metabolites that jointly predicted the within-person effects of red meat intake. The full results are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_CWC_LASSO_coeffs_2026-06-24.csv). From N=`{r} nrow(LASSO_CWC_final_db |> dplyr::filter(Var %in% names(Metabs_db)))` metabolites, N=`{r} nrow(LASSO_CWC_final_db |> dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0))` metabolites were selected by the penalized model. A file of all metabolites selected by the penalized model for red meat intake at the population level, with their associated coefficients is available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_LASSO_CWC_selected_metabs.csv).  @tbl-known-LASSO-metabs shows those metabolites, plus their respective coefficients, selected by the penalized model as associating with red meat intake at the population level that were also known - or identified - compounds.
+First, we ran a penalized model to identify an optimal set of metabolites that jointly predicted the within-person effects of red meat intake. The full results are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_CWC_LASSO_coeffs_2026-06-24.csv). From N=`{r} nrow(LASSO_CWC_final_db |> dplyr::filter(Var %in% names(Metabs_db)))` metabolites, N=`{r} nrow(LASSO_CWC_final_db |> dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0))` metabolites were selected by the penalized model. A file of all metabolites selected by the penalized model for red meat intake at the population level, with their associated coefficients is available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_LASSO_CWC_selected_metabs.csv).  @tbl-known-LASSO-CWC-metabs shows those metabolites, plus their respective coefficients, selected by the penalized model as associating with red meat intake at the population level that were also known - or identified - compounds.
 
 [Matthew, most are lipids, which is common (metaboliote panels are enriched for lipids). I think most interesting here are DHA, and EPA - you could give these as examples of fatty acid associations (or inverse associations) with red meat intake in the population level that would lead to negative associations of meat with health, but are not reflected in the within-person effects]
 
 ```{r}
-#| label: tbl-known-LASSO-metabs
-#| tbl-cap: Metabolites and coefficients, selected by the penalized model as associating with red meat intake at the population level for known compounds.
+#| label: tbl-known-LASSO-CWC-metabs
+#| tbl-cap: Metabolites and coefficients, selected by the penalized model as showing within-person associations with red meat intake for known compounds.
 #| cache: FALSE
 
-known_LASSO_metabs <- LASSO_final$coefficients |> 
+known_LASSO_CWC_metabs_tbl <- LASSO_CWC_final$coefficients |> 
   as.data.frame() |>
   tibble::rownames_to_column(var = "Metabolite") |>
   dplyr::filter(Metabolite %in% names(Metabs_db) & Metabolite %in% Known_metabs & Estimate != 0) |>
@@ -420,12 +420,14 @@ known_LASSO_metabs <- LASSO_final$coefficients |>
   gt::tab_options(table.width = gt::pct(30)) |>
   gt::as_latex()
 
-known_LASSO_metabs
+known_LASSO_CWC_metabs_tbl
 ```
 
 **Post ASN - Lekki to add a table of the linear regression results**
 
-@fig-venn-lasso-overlap shows the overlap in metabolites selected by the penalized model for observed associationat the population level vs. those selected by the model for within-person effects 
+@fig-venn-lasso-overlap shows the overlap in metabolites selected by the penalized model for observed associationat the population level vs. those selected by the model for within-person effects. One metabolite overlapped (see @tbl-overlapping-metabs). 
+
+[Matthew - boringly, this was an unknown metabolite, and it had the same direction of effect in both models. Not as exciting as we had hoped... but we just report it honestly. Up to you if you bring it up in your talk, or just say "this was the only compound selected by both models" and leave others to ask if the direction of effect was the same]
 
 ::: landscape
 ```{r}
@@ -437,14 +439,17 @@ known_LASSO_metabs
 
 
 Obs_temp <- LASSO_final_db |> 
-  dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0) 
+  dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0) |>
+  dplyr::rename(Metabolite = Var)
 
-Obs_temp$Var2 <- "Population level"
+Obs_temp$Var <- "Population level"
 
 CWC_temp <- LASSO_CWC_final_db |> 
-  dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0) 
+  dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0) |>
+  dplyr::rename(Metabolite = Var)
 
-CWC_temp$Var2 <- "Within Person"
+
+CWC_temp$Var <- "Within Person"
 
 
 Venn_F1 <- rbind(Obs_temp, CWC_temp)
@@ -455,12 +460,13 @@ rm(CWC_temp)
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn.plot <- VennDiagram::venn.diagram(x = list(
   Venn_F1 |> 
-    dplyr::filter(Var2=="Population level") |> 
-    dplyr::select(Var) |> 
+    dplyr::filter(Var=="Population level") |> 
+    dplyr::select(Metabolite) |> 
     unlist(), 
   Venn_F1 |> 
-    dplyr::filter(Var2=="Within Person") |> 
-    dplyr::select(Var) |> unlist()
+    dplyr::filter(Var=="Within Person") |> 
+    dplyr::select(Metabolite) |> 
+    unlist()
   ), 
   category.names = c("Population level" , "Within Person"), 
   filename = NULL, 
@@ -492,3 +498,34 @@ rm(Venn_F1)
 ```
 :::
 
+```{r}
+#| label: tbl-overlapping-metabs
+#| tbl-cap: Metabolites and coefficients, selected by both penalized models
+#| cache: FALSE
+
+
+LASSO_metabs <- LASSO_final$coefficients |> 
+  as.data.frame() |>
+  tibble::rownames_to_column(var = "Metabolite") |>
+  dplyr::filter(Metabolite %in% names(Metabs_db) & Estimate != 0) |>
+  dplyr::rename(Population_level_Coefficient = Estimate)
+
+  
+LASSO_CWC_metabs <- LASSO_CWC_final$coefficients |> 
+  as.data.frame() |>
+  tibble::rownames_to_column(var = "Metabolite") |>
+  dplyr::filter(Metabolite %in% names(Metabs_db) & Estimate != 0) |>
+  dplyr::rename(Within_Person_Coefficient = Estimate)
+  
+overlap_metabs <- LASSO_CWC_metabs |>
+dplyr::filter(Metabolite %in% LASSO_metabs$Metabolite) |>
+  dplyr::left_join(LASSO_metabs, by = dplyr::join_by(Metabolite)) |>
+  dplyr::left_join(Metabs_mapping, by = dplyr::join_by(Metabolite)) |>
+  dplyr::select(Metabolite, Population_level_Coefficient, Within_Person_Coefficient) |>
+  gt::gt() |>
+  gt::tab_options(table.width = gt::pct(30)) |>
+  gt::as_latex()
+
+  
+overlap_metabs 
+```
