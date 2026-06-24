@@ -100,7 +100,7 @@ Sys.setenv(VROOM_CONNECTION_SIZE = as.character(10 * 1024 * 1024))
 #set.seed(11042012)
 tar_option_set(packages = c("dplyr", "tidyr", "tibble", "readr", "data.table", "bit64", "foreign", "quarto", "misty", "lmerTest", 
                             "rlang", "purrr", "EnvStats", "mnormt", "MASS", "nlme", "glmmLasso", "dplyr", "future.apply", "progressr", 
-                            "furrr", "purrr", "pryr", "digest", "glmnet", "doMC", "future", "nlme"))
+                            "furrr", "purrr", "digest", "glmnet", "doMC", "future", "nlme"))
 
 tar_source("/media/Analyses/RedMeat-TopMed-Metabolites/R")
 
@@ -681,7 +681,17 @@ list(
   ),
   
   tar_target(WP_score_info, build_WP_score$score_info),
-  tar_target(WP_scores, build_WP_score$scores)
-  
+  tar_target(WP_scores, build_WP_score$scores),
+
+#----------------------------------------------------------------------------#
+#--------------------------------Quarto file---------------------------------#
+#----------------------------------------------------------------------------#
+
+tarchetypes::tar_quarto(
+  quarto_file,
+  path = "/media/Analyses/RedMeat-TopMed-Metabolites/RedMeat-TopMed-Metabolites_temp4ASN.qmd",
+  quiet = FALSE
+)
+
 )
 

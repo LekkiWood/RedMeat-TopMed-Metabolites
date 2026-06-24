@@ -58,7 +58,275 @@ if (!requireNamespace("VennDiagram", quietly = TRUE)) {
 - You should always check you have the most recent files! I use dynamic dates, so this can be done by checking that your files match the versions on GitHub:
 
   - My profile can be found [here](https://github.com/LekkiWood)
-  
+
   - My repositories are listed [here](https://github.com/LekkiWood?tab=repositories)
+
+  - The most recent version of the source code for this README file can be found [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/RedMeat-TopMed-Metabolites_temp4ASN.qmd)
+
+  - The most recent source code for creating the output files can be found [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/_targets.R)
   
-  - My repositories are listed [here](https://github.com/LekkiWood?tab=repositories)
+  # Summary
+
+\newpage
+
+# Data Preparation
+
+I will add this later... it's complicated why.
+
+## Build Traits
+
+```{r}
+#| label: read-in-traits-info
+
+path_E1 <- targets::tar_read(path_exam1_file)
+path_E5  <- targets::tar_read(path_exam5_file)
+path_E6 <- targets::tar_read(path_exam6_file)
+
+path_E1_nutr <- targets::tar_read(path_e1_nutr_file)
+path_E1_food <- targets::tar_read(path_e1_ffq_file)
+path_E5_nutr <- targets::tar_read(path_e5_nutr_file)
+path_E5_food <- targets::tar_read(path_e5_ffq_file)
+
+
+#path_T2D <- targets::tar_read(DMEvents_csv_loci)
+
+#path_apoe <- targets::tar_read(MIND_4_sas7bdat_loci)
+#path_ADRD <- targets::tar_read(path_cognition_file)
+
+```
+
+### Input Files
+
+- Exam 1 (baseline) covariates and outcomes `{r} print(base::unlist(base::strsplit(path_E1, split="/"))[7])`
+
+- Exam 5 covariates and outcomes `{r} print(base::unlist(base::strsplit(path_E5, split="/"))[7])`
+
+- Exam 6 covariates and outcomes `{r} print(base::unlist(base::strsplit(path_E6, split="/"))[7])`
+
+- Exam 1 (baseline) energy intake `{r} print(base::unlist(base::strsplit(path_E1_nutr, split="/"))[7])`
+
+- Exam 5 energy intake `{r} print(base::unlist(base::strsplit(path_E5_nutr, split="/"))[7])`
+
+- Exam 1 (baseline) red meat intake `{r} print(base::unlist(base::strsplit(path_E1_food, split="/"))[7])`
+
+- Exam 5 red meat intake `{r} print(base::unlist(base::strsplit(path_E5_food, split="/"))[7])`
+
+
+### Coding
+
+#### Predictors
+
+- Red meat was intake of unprocessed red meat in servings / day
+
+#### Outcomes
+
+- Insulin was measured in mU/L
+- Glucose was measured in mg/dL
+- HDL was measured in mg/dL
+- LDL was measured in mg/dL
+- Triglycerides was measures in mg/dL
+
+#### Covariates
+
+- Race was coded as a factor variable; coded 1= European-American, 2 = Chinese-American, 3 = African-American, 4 = Hispanic-American
+- Site was coded as a factor variable; 1 = Wake Forest, 2= Columbia, 3= Johns Hopkins (Baltimore), 4= Minnesota (Twin Cities), 5= Northwestern (Evanston. IL), 6 = UCLA (Los Angeles, VA)
+- Sex was coded as a factor variable; coded 1 = female, 2 = male
+- Age was in years
+- Smoking was a ordinal variable: 0 = Never, 1 = Former, 2 = Current
+- Physical activity (PA) is total moderate of vigorous physical activity in Met-Min / week
+- Caloric intake (energy) is calories / day
+- Kidney functioning is estimated by estimated glomerular filtration rate (eGFR)
+
+#### Outcomes
+
+- Diabetes was binary; 1 = no diabetes, 2 = diabetes according to ADA 2003 criteria (fasting glucose, use of medication, self-reported diagnosis) and so includes both treated and untreated diabetes
+- Cognitive status was ordinal; \[1 = no diabetes, 2 = diabetes according to ADA 2003 criteria (fasting glucose, use of medication, self-reported diagnosis) and so includes both treated and untreated diabetes\]to fill in\]
+
+## Build Final Sample
+
+```{r}
+#| label: build-final-sample
+
+phenos <- targets::tar_read(Traits_long)
+Metabs_db <- targets::tar_read(Metabs_long_clean)
+
+Traits_db <- phenos |>
+  dplyr::filter(idno %in% Metabs_db$idno) |>
+  tidyr::drop_na(redmeat)
+#traits_N_info <- phenos$N_info
+
+#Metabolite_CV_and_missingness <- targets::tar_read(Metabolite_CV_and_missingness)
+
+#inc_metabs <- Metabolite_CV_and_missingness |>
+ # dplyr::filter(missingness_exam_1 < .1 & missingness_exam_5 < .1) |>
+ # dplyr::pull(index_name)
+```
+
+I need to add this too - trying to rush you the actual results ahead of ASN...
+
+\newpage
+
+# Methods
+
+## Measures
+
+### Metabolome-wide metabolites
+
+
+
+Metabolome-wide metabolite profiling was conducted in fasted plasma samples using four complementary liquid chromatography tandem mass spectrometry (LC-MS)-based methods that couple distinct metabolite extraction and LC techniques with high resolution, accurate mass (HRAM) MS profiling to provide a hybrid analysis of hundreds of metabolites of confirmed identity and thousands of LC-MS peaks from yet to be identified compounds. Each of the four LC-MS methods is established on dedicated instruments consisting of Shimadzu Nexera UHPLCs coupled to Thermo Q Exactive series orbitrap mass spectrometers and includes measurement of (i) polar and nonpolar lipids using C8 reversed phase LC and positive ion MS (C8-pos); (ii) free fatty acids, bile acids, and metabolites of intermediate polarity using C18 reversed phase LC and negative ion MS (C18-neg); (iii) amino acids, amino acid metabolites, acylcarnitines, dipeptides, and other cationic polar metabolites using hydrophilic interaction liquid chromatography and positive ion MS (HILIC-pos); and (iv) sugars, organic acids, purines, pyrimidines, and other anionic polar metabolites using HILIC and negative ion MS (HILIC-neg).
+
+*Data Processing and compound identification*: Targeted data processing of known metabolites was achieved using TraceFinder (v 3.3, Thermo Scientific) software, utilizing an in-house library of over 3000 authentic reference standards with confirmed identities of \>700 metabolites (MSI Level 1 ID308). Mixtures of reference standards and reference samples are included in each analysis queue to confirm IDs in every dataset. HRAM, nontargeted data are processed using Progenesis QI software (Nonlinear Dynamics) to detect peaks, perform chromatographic retention time alignment, and integrate peak areas. Metabolites of confirmed identity are then annotated in the dataset, and unknowns are “tagged” using their measured mass-to-charge ratios (m/z) and chromatographic retention times (RT).
+
+Unknowns of interest were initially identified via acquisition of product ion spectra (MS/MS) using a Thermo Scientific ID-X coupled with machine learning-based structure prediction using the SIRIUS/CSI:FingerID workflow and similarity searching using GNPS309, 310. Identities were then confirmed using synthetic standards.
+
+*Quality control*: During aliquoting, each sample was visually inspected and a pooled QC sample created. LC-MS system performance was qualified prior to analyses using repeated analyses of pooled QCs. During sample analyses: i) mixtures of up to \~150 synthetic reference compounds were analyzed before and after each sample queue to assess consistency of peak shapes, RTs, and signal intensity; ii) internal standards are added to every sample to assure accurate sample volume injection and to monitor drift in sensitivity, and iii) and pairs of pooled QC samples are analyzed at intervals of 20 study samples (10% frequency overall), with the first sample from each pair used for drift correction and the second used to evaluate analytical precision. Out of \>700 identified plasma metabolites and lipids, XXX were measured with a coefficient of variation (CV) \< 10%. Similarly, \>XXXX peaks from unknowns are consistently measured with a CV \<10% in each LC-MS method.
+
+## Statistics
+
+All analyses were conducted using R software (version 4.0.5)
+
+### Participant characteristics
+
+Demographic, dietary and health information were each calculated as a mean (+/- standard deviation; SD) for continuous variables, or total number (unweighted N) and percentage (%) for categorical or ordinal variables.
+
+### Metabolome-wide Associations with Red Meat Intake
+
+#### Observed associations
+
+To identify metabolites associated with red meat intake, we first estimated the observed red meat-metabolite associations using data from exam 1 and exam 5 within a penalized multi-level model with a random intercept, nested within person, conducted via elastic net with a 50/50 training:test split. Elastic net was chosen as this combines the strengths of both L~1~ (Lasso) and L~2~ (Ridge) penalties, thus optimizing the trade-off between sparsity (L~1~) and stability (L~2~) to prevent overfitting. At level 1, red meat intake in servings / day was specified as the outcome, with all metabolome-wide metabolites as predictors, alongside the following covariates: age, kideny function (eGFR), diabetes status, income level, physical activity, highest education level achieved, average daily energy intake, gender, time point (exam 1 / exam 5), race\\ethnicity, and smoking status, which was nested within person (level 2). A penalty parameter was added ($\lambda$), selected via 5-fold cross-validation to optimize predictive performance, and the optimal $\lambda$ applied to metabolite coefficients only (i.e., not covariates), shrinking weak or redundant metabolite predictors toward zero and mitigating over-fitting and multi-collinearity among highly correlated metabolites.
+
+Age, physical activity, estimated glomerular filtration rate, daily energy intake, diabetes status, smoking status, data collection site and exam included as time-varying covariates, and sex, race`\`ethnicity, and income level included as time invariant covariates. All non-categorical variables (metabolite predictors, red meat outcome, and covariates) were scaled and standardized (z-score standardization to a mean of 0 and a standard deviation of 1) prior to inclusion in the models.
+
+#### Within-Person Effects
+
+Next, we identified metabolites that covaried with changes in red meat intake within individuals via centering to isolate within-person effects which reflect the covariation of the predictor and outcome within individuals over time. These capture statistical responses of the outcome to change in the predictor and may reflect causal effects, but can also be influenced by time-varying confounding (i.e., influences that covary with both the predictor and the outcome) and measurement error. First: the person-mean for red meat intake was calculated, that is, the mean red meat intake across both time points for each participant. For the ${\mathit{i}}$th person, this is derived using the equation:
+
+$$\bar{X}_i = \frac{1}{n_i} \sum_{j=1}^{n_i} X_{ij}$$
+
+where $X{\mathit{_i}{_j}}$ is the observation of red meat intake for the ${\mathit{i}}$th person at the ${\mathit{j}}$th time point. This removes any within-person variance and represents each participant's average red meat intake during the course of study, and by definition only contains between-person variance (plus possible measurement error).
+
+Next, the observations of red meat intake are person centered, by subtracting the person mean from each observation. For the ${\mathit{i}}$th person, at the ${\mathit{j}}$th time point, this is derived using the equation:
+
+$$X_{ij}^{\mathrm{CWC}} = X_{ij} - \bar{X}_i$$
+
+where $X{\mathit{_i}{_j}}$ is the observation of red meat intake for the ${\mathit{i}}$th person at the ${\mathit{j}}$th time point. This centering approach removes any between-person variance in red meat intake, with each observation representing the participant's difference in intake compared to their own usual intake, and thus by definition only contains within-person variance.
+
+This person centered variable was then used as the outcome in penalized, multi-level models, otherwise specified as above.
+
+### Creation of metabolite summary scores
+
+For each parameter (observed associations \[$\beta{\mathit{_O}{_b}{_s}}$\], and within-person effects \[$\beta{\mathit{_W}{_P}}$\], a weighted sum of all metabolites selected by the elastic net model for that parameter was created at each of exam 1, 5 and 6, by multiplying individual standardized metabolite values by the relevant coefficient from the penalized model. Thus, two scores were created for each participant at each time point: (1) a score representing the sum of significant metabolites from the observed association analyses ($Score{\mathit{_O}{_b}{_s}}$); and (2) a score representing the sum of significant metabolites from the within-person effects ($Score{\mathit{_W}{_P}}$).
+
+### Associations Between Metabolite Scores and Health
+
+We examined the associations between the two metabolite scores and health using data from exam 6, to decouple the data used for these analyses from the data used to generate the metabolite scores. Since we were restricted to using data from one exam only, we examined observed associations between each of four metabolite scores, and each of cardiometabolic disease risk factors using standard linear regression models, with the metabolite scores as the predictor and risk factor as the outcome, which was transformed using an inverse normal transformation prior to inclusion in the models. The exception was for incident diabetes, for which metabolite scores from baseline were used for all without T2D at this exam. All models included the same set of covariates used int he penalized models, specified as fixed effects.
+
+\newpage
+
+# Results
+
+## Sample descriptives
+
+- Sample descriptives at baseline are available in @tbl-of-descriptives
+
+::: landscape
+```{r}
+#| label: tbl-of-descriptives
+#| tbl-cap: Sample Descriptives, Stratified by Exam
+#| cache: FALSE
+
+bold_labels <- c(
+  "Age (y)", "Gender", "Race or ethnicity", "Highest level of education", "Diabetes status", "Smoking status", "Physical activity, (MET-min/week)", "Estimated glomerular filtration rate", "Red meat intake, (svd/day)", "Energy intake, (kcals/day)", "Triglycerides (mg/dL)", "LDL cholesterol (mg/dL)", "HDL cholesterol (mg/dL)", "Fasting glucose (mg/dL)", "Fasting insulin (mu/mL)", "Cogntive status at follow-up"
+  )
+  
+
+table1 <- Traits_db |> 
+  dplyr::mutate(
+        Exam_desc = factor(exam,
+                       levels = c("1", "5", "6"),
+                       labels = c("Exam 1", "Exam 5", "Exam 6")),
+        gender_desc = factor(gender,
+                       levels = c("Female", "Male"),
+                       labels = c("Female", "Male")),
+        race_desc = factor(race,
+                       levels = c("1", "2", "3", "4"),
+                       labels = c("Non-Hispanic White", "Chinese American", "Black/African-American", "Hispanic")),
+        smoking_desc = factor(smoking,
+                              levels = c("0", "1","2"),
+                              labels = c("Never", "Former", "Current")),
+        diabetes_desc = factor(DM,
+                              levels = c("0", "1"),
+                              labels = c("Normoglycemia", "Diabetes")),
+        cog_desc = factor(cogstatus,
+                              levels = c("Not impaired", "Mild impairment", "Probably dementia"),
+                              labels = c("No impairment", "Mild Ccognitive impairment", "Probable dementia")),
+                       ) |>
+          gtsummary::tbl_summary(
+            include = c(age, gender_desc, race_desc, smoking_desc, diabetes_desc, PA, egfr, energy, redmeat, TG, ldl, hdl,  glucose, insulin, cog_desc),
+            by = exam,
+            statistic = list(
+              gtsummary::all_continuous() ~ "{mean} ({sd})",
+              gtsummary::all_categorical() ~ "{n} / {N} ({p}%)"
+              ), 
+            missing = "no", # don't list missing data separately
+            digits = gtsummary::all_continuous() ~ 2, 
+            label = list(age = "Age (y)",
+                 gender_desc = "Gender",
+                 race_desc = "Race or ethnicity",
+                 diabetes_desc = "Diabetes status",
+                 smoking_desc = "Smoking status",
+                 PA = "Physical activity, (MET-min/week)",
+                 egfr = "Estimated glomerular filtration rate",
+                redmeat = "Red meat intake, (svd/day)", 
+                 energy = "Energy intake, (kcals/day)",     
+                 glucose = "Fasting glucose (mg/dL)",
+                 insulin = "Fasting insulin (mu/mL)",
+                TG = "Triglycerides (mg/dL)", 
+                 ldl = "LDL cholesterol (mg'dL)", 
+                 hdl = "HDL cholesterol (mg/dL)",
+                cog_desc = "Cogntive status at follow-up"),
+             type = list(age ~ "continuous", 
+                         gender_desc ~ "categorical",
+                         race_desc ~ "categorical", 
+                         diabetes_desc ~ "categorical",  
+                         smoking_desc ~ "categorical", 
+                         PA ~ "continuous", 
+                         egfr ~ "continuous", 
+                         redmeat  ~ "continuous", 
+                         energy ~ "continuous", 
+                         glucose ~ "continuous",
+                         insulin ~ "continuous",
+                         TG ~ "continuous",
+                         ldl ~ "continuous",
+                         hdl ~ "continuous",
+                         cog_desc ~ "categorical")
+          ) |>
+  gtsummary::modify_spanning_header(
+    gtsummary::all_stat_cols() ~ "Exam"
+  ) |>
+  gtsummary::as_gt() |>
+  gt::tab_options(page.orientation = "landscape") |>
+  gt::tab_style(
+    style = gt::cell_text(weight = "bold"),
+    locations = gt::cells_body(
+      columns = "label",
+      rows = label %in% bold_labels
+    )
+    ) |>
+# Bold *any* spanning headers 
+  gt::tab_style(
+    style = gt::cell_text(weight = "bold"),
+    locations = gt::cells_column_spanners()
+  ) |>
+  gt::tab_options(latex.use_longtable = TRUE)
+
+table1
+
+rm(bold_labels)
+rm(table1)
+
+
+```
+:::
+
