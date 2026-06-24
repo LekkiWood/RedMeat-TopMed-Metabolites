@@ -85,7 +85,6 @@ Known_metabs <- Metabs_mapping |>
 
 ```
 
-
 I will add this later... it's complicated why.
 
 ## Build Traits
@@ -206,7 +205,7 @@ Demographic, dietary and health information were each calculated as a mean (+/- 
 
 #### Observed associations
 
-To identify metabolites associated with red meat intake, we first estimated the observed red meat-metabolite associations using data from exam 1 and exam 5 within a penalized multi-level model with a random intercept, nested within person, conducted via elastic net with a 50/50 training:test split. Elastic net was chosen as this combines the strengths of both L~1~ (Lasso) and L~2~ (Ridge) penalties, thus optimizing the trade-off between sparsity (L~1~) and stability (L~2~) to prevent overfitting. At level 1, red meat intake in servings / day was specified as the outcome, with all metabolome-wide metabolites as predictors, alongside the following covariates: age, kideny function (eGFR), diabetes status, income level, physical activity, highest education level achieved, average daily energy intake, gender, time point (exam 1 / exam 5), race\\ethnicity, and smoking status, which was nested within person (level 2). A penalty parameter was added ($\lambda$), selected via 5-fold cross-validation to optimize predictive performance, and the optimal $\lambda$ applied to metabolite coefficients only (i.e., not covariates), shrinking weak or redundant metabolite predictors toward zero and mitigating over-fitting and multi-collinearity among highly correlated metabolites.
+To identify metabolites associated with red meat intake, we first estimated the observed red meat-metabolite associations using data from exam 1 and exam 5 within a penalized multi-level model with a random intercept, nested within person, conducted via LASSO with a 50/50 training:test split. LASSO (L~1~ regularization) was chosen to maximize sparsity (L~1~), given the high-dimensional nature of the data (i.e., the number of predictors was \> the number of participants) . At level 1, red meat intake in servings / day was specified as the outcome, with all metabolome-wide metabolites as predictors, alongside the following covariates: age, kideny function (eGFR), diabetes status, income level, physical activity, highest education level achieved, average daily energy intake, gender, time point (exam 1 / exam 5), race\\ethnicity, and smoking status, which was nested within person (level 2). A penalty parameter was added ($\lambda$), selected via 5-fold cross-validation to optimize predictive performance, and the optimal $\lambda$ applied to metabolite coefficients only (i.e., not covariates), shrinking weak or redundant metabolite predictors toward zero and mitigating over-fitting and multi-collinearity among highly correlated metabolites.
 
 Age, physical activity, estimated glomerular filtration rate, daily energy intake, diabetes status, smoking status, data collection site and exam included as time-varying covariates, and sex, race`\`ethnicity, and income level included as time invariant covariates. All non-categorical variables (metabolite predictors, red meat outcome, and covariates) were scaled and standardized (z-score standardization to a mean of 0 and a standard deviation of 1) prior to inclusion in the models.
 
@@ -224,15 +223,15 @@ $$X_{ij}^{\mathrm{CWC}} = X_{ij} - \bar{X}_i$$
 
 where $X{\mathit{_i}{_j}}$ is the observation of red meat intake for the ${\mathit{i}}$th person at the ${\mathit{j}}$th time point. This centering approach removes any between-person variance in red meat intake, with each observation representing the participant's difference in intake compared to their own usual intake, and thus by definition only contains within-person variance.
 
-This person centered variable was then used as the outcome in penalized, multi-level models, otherwise specified as above.
+This person centered variable was then used as the outcome in penalized (again, LASSO penalty) multi-level models, otherwise specified as above.
 
 ### Creation of metabolite summary scores
 
-For each parameter (observed associations \[$\beta{\mathit{_O}{_b}{_s}}$\], and within-person effects \[$\beta{\mathit{_W}{_P}}$\], a weighted sum of all metabolites selected by the elastic net model for that parameter was created at each of exam 1, 5 and 6, by multiplying individual standardized metabolite values by the relevant coefficient from the penalized model. Thus, two scores were created for each participant at each time point: (1) a score representing the sum of significant metabolites from the observed association analyses ($Score{\mathit{_O}{_b}{_s}}$); and (2) a score representing the sum of significant metabolites from the within-person effects ($Score{\mathit{_W}{_P}}$).
+For each parameter (observed associations \[$\beta{\mathit{_O}{_b}{_s}}$\], and within-person effects \[$\beta{\mathit{_W}{_P}}$\], a weighted sum of all metabolites selected by the penalized model for that parameter was created at each of exam 1, 5 and 6, by multiplying individual standardized metabolite values by the relevant coefficient from the penalized model. Thus, two scores were created for each participant at each time point: (1) a score representing the sum of significant metabolites from the observed association analyses ($Score{\mathit{_O}{_b}{_s}}$); and (2) a score representing the sum of significant metabolites from the within-person effects ($Score{\mathit{_W}{_P}}$).
 
 ### Associations Between Metabolite Scores and Health
 
-We examined the associations between the two metabolite scores and health using data from exam 6, to decouple the data used for these analyses from the data used to generate the metabolite scores. Since we were restricted to using data from one exam only, we examined observed associations between each of four metabolite scores, and each of cardiometabolic disease risk factors using standard linear regression models, with the metabolite scores as the predictor and risk factor as the outcome, which was transformed using an inverse normal transformation prior to inclusion in the models. The exception was for incident diabetes, for which metabolite scores from baseline were used for all without T2D at this exam. All models included the same set of covariates used int he penalized models, specified as fixed effects.
+We examined the associations between the two metabolite scores and health using data from exam 6, to decouple the data used for these analyses from the data used to generate the metabolite scores. Since we were restricted to using data from one exam only, we examined observed associations between each of four metabolite scores, and each of cardiometabolic disease risk factors using standard linear regression models, with the metabolite scores as the predictor and risk factor as the outcome, which was transformed using an inverse normal transformation prior to inclusion in the models. The exception was for incident diabetes, for which metabolite scores from baseline were used for all without T2D at this exam. All models included the same set of covariates used in the penalized models, specified as fixed effects.
 
 \newpage
 
@@ -342,7 +341,7 @@ rm(table1)
 ```
 :::
 
-# Results
+## Metabolite Selection
 
 ```{r}
 #| label: read-in-results
@@ -375,9 +374,9 @@ write.csv(LASSO_CWC_final$coefficients |>
     dplyr::select(Metabolite, Estimate), "/media/Analyses/RedMeat-TopMed-Metabolites/outputs/Redmeat_LASSO_CWC_selected_metabs.csv", row.names = FALSE)
 ```
 
-First, we ran a penalized model to identify an optimal set of metabolites that jointly predicted red meat intake at the population level. The full results are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_LASSO_coeffs_2026-06-24.csv). From N=`{r} nrow(LASSO_final_db |> dplyr::filter(Var %in% names(Metabs_db)))` metabolites, N=`{r} nrow(LASSO_final_db |> dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0))` metabolites were selected by the penalized model. A file of all metabolites selected by the penalized model for red meat intake at the population level, with their associated coefficients is available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_LASSO_selected_metabs.csv).  @tbl-known-LASSO-metabs shows those metabolites, plus their respective coefficients, selected by the penalized model as associating with red meat intake at the population level that were also known - or identified - compounds.
+First, we ran a penalized model to identify an optimal set of metabolites that jointly predicted red meat intake at the population level. The full results are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_LASSO_coeffs_2026-06-24.csv). From N=`{r} nrow(LASSO_final_db |> dplyr::filter(Var %in% names(Metabs_db)))` metabolites, N=`{r} nrow(LASSO_final_db |> dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0))` metabolites were selected by the penalized model. A file of all metabolites selected by the penalized model for red meat intake at the population level, with their associated coefficients is available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_LASSO_selected_metabs.csv). @tbl-known-LASSO-metabs shows those metabolites, plus their respective coefficients, selected by the penalized model as associating with red meat intake at the population level that were also known - or identified - compounds.
 
-[Matthew, most are lipids, which is common (metabolite panels are enriched for lipids). I think most interesting here are DHA, and EPA - you could give these as examples of fatty acid associations (or inverse associations) with red meat intake in the population level that would lead to negative associations of meat with health, but are not reflected in the within-person effects]
+\[Matthew, most are lipids, which is common (metabolite panels are enriched for lipids). I think most interesting here are DHA, and EPA - you could give these as examples of fatty acid associations (or inverse associations) with red meat intake in the population level that would lead to negative associations of meat with health, but are not reflected in the within-person effects\]
 
 ```{r}
 #| label: tbl-known-LASSO-metabs
@@ -400,9 +399,9 @@ known_LASSO_metabs_tbl
 
 **Post ASN - Lekki to add a table of the linear regression results**
 
-First, we ran a penalized model to identify an optimal set of metabolites that jointly predicted the within-person effects of red meat intake. The full results are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_CWC_LASSO_coeffs_2026-06-24.csv). From N=`{r} nrow(LASSO_CWC_final_db |> dplyr::filter(Var %in% names(Metabs_db)))` metabolites, N=`{r} nrow(LASSO_CWC_final_db |> dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0))` metabolites were selected by the penalized model. A file of all metabolites selected by the penalized model for red meat intake at the population level, with their associated coefficients is available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_LASSO_CWC_selected_metabs.csv).  @tbl-known-LASSO-CWC-metabs shows those metabolites, plus their respective coefficients, selected by the penalized model as associating with red meat intake at the population level that were also known - or identified - compounds.
+First, we ran a penalized model to identify an optimal set of metabolites that jointly predicted the within-person effects of red meat intake. The full results are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_CWC_LASSO_coeffs_2026-06-24.csv). From N=`{r} nrow(LASSO_CWC_final_db |> dplyr::filter(Var %in% names(Metabs_db)))` metabolites, N=`{r} nrow(LASSO_CWC_final_db |> dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0))` metabolites were selected by the penalized model. A file of all metabolites selected by the penalized model for red meat intake at the population level, with their associated coefficients is available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_LASSO_CWC_selected_metabs.csv). @tbl-known-LASSO-CWC-metabs shows those metabolites, plus their respective coefficients, selected by the penalized model as associating with red meat intake at the population level that were also known - or identified - compounds.
 
-[Matthew, most are lipids, which is common (metaboliote panels are enriched for lipids). I think most interesting here are DHA, and EPA - you could give these as examples of fatty acid associations (or inverse associations) with red meat intake in the population level that would lead to negative associations of meat with health, but are not reflected in the within-person effects]
+\[Matthew, most are lipids, which is common (metaboliote panels are enriched for lipids). I think most interesting here are DHA, and EPA - you could give these as examples of fatty acid associations (or inverse associations) with red meat intake in the population level that would lead to negative associations of meat with health, but are not reflected in the within-person effects\]
 
 ```{r}
 #| label: tbl-known-LASSO-CWC-metabs
@@ -425,9 +424,9 @@ known_LASSO_CWC_metabs_tbl
 
 **Post ASN - Lekki to add a table of the linear regression results**
 
-@fig-venn-lasso-overlap shows the overlap in metabolites selected by the penalized model for observed associationat the population level vs. those selected by the model for within-person effects. One metabolite overlapped (see @tbl-overlapping-metabs). 
+@fig-venn-lasso-overlap shows the overlap in metabolites selected by the penalized model for observed associationat the population level vs. those selected by the model for within-person effects. One metabolite overlapped (see @tbl-overlapping-metabs).
 
-[Matthew - boringly, this was an unknown metabolite, and it had the same direction of effect in both models. Not as exciting as we had hoped... but we just report it honestly. Up to you if you bring it up in your talk, or just say "this was the only compound selected by both models" and leave others to ask if the direction of effect was the same]
+\[Matthew - boringly, this was an unknown metabolite, and it had the same direction of effect in both models. Not as exciting as we had hoped... but we just report it honestly. Up to you if you bring it up in your talk, or just say "this was the only compound selected by both models" and leave others to ask if the direction of effect was the same\]
 
 ::: landscape
 ```{r}
@@ -497,7 +496,6 @@ rm(venn.plot)
 rm(Venn_F1)
 ```
 
-
 ```{r}
 #| label: tbl-overlapping-metabs
 #| tbl-cap: Metabolites and coefficients, selected by both penalized models
@@ -529,7 +527,8 @@ dplyr::filter(Metabolite %in% LASSO_metabs$Metabolite) |>
   
 overlap_metabs 
 ```
-
 :::
 
+## Parameterizing Red Meat - Metabolite Associations
 
+LASSO coefficients can be tricky to interpret as they represent a combination of variable selection and shrinkage nshinkage is achieved via the L~1~ penalty(. Because of this, you generally **do not interpret Lasso coefficient magnitudes** as the literal effect of X on Y. Instead, they represent a *penalized* estimate used specifically to optimize out-of-sample prediction, and select an optimal set of metbaoloites that jointly predict the red meat variable of interest, without overfitting. To help understand the magnitude of associations for the metabolites selected by the penalized models

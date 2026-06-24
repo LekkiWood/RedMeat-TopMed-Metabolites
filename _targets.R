@@ -710,7 +710,8 @@ list(
                                                        numeric_covariates = c("age", "PA", "egfr", "energy", "income"),
                                                        factor_covariates = c("gender", "race", "DM",  "smoking", "site"), 
                                                        predictor = "redmeat",
-                                                       lasso_res = LASSO_final_coeffs_db)
+                                                       lasso_res1 = LASSO_final_coeffs_db,
+                                                       lasso_res2 = LASSO_CWC_final_coeffs_db)
              ),
   
   #---------Save coeffs ---------#
@@ -739,7 +740,8 @@ list(
                                                        numeric_covariates = c("age", "PA", "egfr", "energy", "income"),
                                                        factor_covariates = c("gender", "race", "DM",  "smoking", "site"), 
                                                        predictor = "redmeat_cwc_z",
-                                                       lasso_res = LASSO_CWC_final_coeffs_db)
+                                                       lasso_res1 = LASSO_final_coeffs_db,
+                                                       lasso_res2 = LASSO_CWC_final_coeffs_db)
   ),
   
   #---------Save coeffs ---------#

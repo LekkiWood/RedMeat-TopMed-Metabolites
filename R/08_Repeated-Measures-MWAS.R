@@ -15,7 +15,7 @@
 
 repeated_measures_MWAS_function <- function(cleaned_metabs, metab_mapping,
                                        traits_db, numeric_covariates,
-                                       factor_covariates, predictor, lasso_res) {
+                                       factor_covariates, predictor, lasso_res1, lasso_res2) {
   
   
   #---------------------------------------------------------------------------------------#
@@ -26,10 +26,18 @@ repeated_measures_MWAS_function <- function(cleaned_metabs, metab_mapping,
   MWAS_file <- traits_db |>
     dplyr::left_join(cleaned_metabs, by = common_keys)
   
-  inc_metabs <- lasso_res |>
+  inc_metabs_temp1 <- lasso_res1 |>
     tibble::rownames_to_column(var = "Metabolite") |>
     dplyr::filter(Metabolite %in% names(cleaned_metabs) & Estimate !=0) |>
     dplyr::pull(Metabolite)
+  
+  inc_metabs_temp2 <- lasso_res2 |>
+    tibble::rownames_to_column(var = "Metabolite") |>
+    dplyr::filter(Metabolite %in% names(cleaned_metabs) & Estimate !=0) |>
+    dplyr::filter(!Metabolite %in% inc_metabs_temp1) |> #remove duplicates
+    dplyr::pull(Metabolite)
+  
+  inc_metabs <- c(inc_metabs_temp1, inc_metabs_temp2)
   
   
   #metabs <- metab_mapping |>
