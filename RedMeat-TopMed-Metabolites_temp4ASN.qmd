@@ -1,0 +1,64 @@
+---
+title: "RedMeat-TopMed-Metabolites - temporary Quarto to meet ASN deadline"
+author: "LekkiWood (LekkiWood@Gmail.com)"
+date: today
+format:
+  pdf:
+    pdf-engine: lualatex
+    includes:
+      in_header: 'gt_packages.sty'
+    header-includes:
+      - \usepackage{pdflscape}
+      - \setkeys{Gin}{width=\linewidth,height=0.9\textheight,keepaspectratio}
+    toc: true
+    toc-depth: 4
+execute:
+  echo: false
+  warning: false
+  message: false
+  # ensure chunks run from the project root (where _targets/ lives)
+  dir: project
+pdf-engine: latexmk
+editor: visual
+---
+
+```{r}
+#| label: load-packages
+
+## Load targets
+if (!requireNamespace("targets", quietly = TRUE)) {
+  stop("The {targets} package is not installed/available in this render session.")
+}
+
+## Load knitr
+if (!requireNamespace("knitr", quietly = TRUE)) {
+  stop("The {knitr} package is not installed/available in this render session.")
+}
+
+## Load quarto
+if (!requireNamespace("quarto", quietly = TRUE)) {
+  stop("The {quarto} package is not installed/available in this render session.")
+}
+
+## Load rcompanion
+if (!requireNamespace("rcompanion", quietly = TRUE)) {
+  stop("The {rcompanion} package is not installed/available in this render session.")
+}
+
+## Load Venn
+if (!requireNamespace("VennDiagram", quietly = TRUE)) {
+  stop("The {VennDiagram} package is not installed/available in this render session.")
+}
+```
+
+\newpage
+
+# Important notes
+
+- You should always check you have the most recent files! I use dynamic dates, so this can be done by checking that your files match the versions on GitHub:
+
+  - My profile can be found [here](https://github.com/LekkiWood)
+  
+  - My repositories are listed [here](https://github.com/LekkiWood?tab=repositories)
+  
+  - My repositories are listed [here](https://github.com/LekkiWood?tab=repositories)
