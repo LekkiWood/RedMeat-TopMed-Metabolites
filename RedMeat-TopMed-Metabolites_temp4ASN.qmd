@@ -496,7 +496,7 @@ grid::grid.draw(venn.plot)
 rm(venn.plot) 
 rm(Venn_F1)
 ```
-:::
+
 
 ```{r}
 #| label: tbl-overlapping-metabs
@@ -529,3 +529,7 @@ dplyr::filter(Metabolite %in% LASSO_metabs$Metabolite) |>
   
 overlap_metabs 
 ```
+
+:::
+
+

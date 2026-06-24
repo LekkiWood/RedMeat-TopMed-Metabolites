@@ -701,6 +701,64 @@ list(
   
   tar_target(WP_score_info, build_WP_score$score_info),
   tar_target(WP_scores, build_WP_score$scores),
+  
+  #----------Run-MWAS----------
+  
+  tar_target(Obs_MWAS, repeated_measures_MWAS_function(cleaned_metabs = Metabs_long_clean, 
+                                                       metab_mapping = Mapping_file,
+                                                       traits_db = Traits_long, 
+                                                       numeric_covariates = c("age", "PA", "egfr", "energy", "income"),
+                                                       factor_covariates = c("gender", "race", "DM",  "smoking", "site"), 
+                                                       predictor = "redmeat",
+                                                       lasso_res = LASSO_final_coeffs_db)
+             ),
+  
+  #---------Save coeffs ---------#
+  
+  #save CV file for use
+  tar_target(Obs_MWAS_filename, paste0("Redmeat_coeffs_", Sys.Date(), ".csv")),
+  
+  
+  #export CV as csv
+  tar_target(Obs_MWAS_csv,
+             {
+               out_dir  <- "outputs"
+               dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+               out_path <- file.path(out_dir, Obs_MWAS_filename)
+               write.csv(Obs_MWAS, out_path)
+               out_path
+             },
+             format = "file"
+  ),
+             
+  #----------Run-CWC-MWAS----------
+  
+  tar_target(CWC_MWAS, repeated_measures_MWAS_function(cleaned_metabs = Metabs_long_clean, 
+                                                       metab_mapping = Mapping_file,
+                                                       traits_db = Traits_long, 
+                                                       numeric_covariates = c("age", "PA", "egfr", "energy", "income"),
+                                                       factor_covariates = c("gender", "race", "DM",  "smoking", "site"), 
+                                                       predictor = "redmeat_cwc_z",
+                                                       lasso_res = LASSO_CWC_final_coeffs_db)
+  ),
+  
+  #---------Save coeffs ---------#
+  
+  #save CV file for use
+  tar_target(CWC_MWAS_filename, paste0("Redmeat_CWC_coeffs_", Sys.Date(), ".csv")),
+  
+  
+  #export CV as csv
+  tar_target(CWC_MWAS_csv,
+             {
+               out_dir  <- "outputs"
+               dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+               out_path <- file.path(out_dir, CWC_MWAS_filename)
+               write.csv(CWC_MWAS, out_path)
+               out_path
+             },
+             format = "file"
+  ),            
 
 #----------------------------------------------------------------------------#
 #--------------------------------Quarto file---------------------------------#
