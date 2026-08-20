@@ -1,87 +1,4 @@
-############################################
-#                                          #
-#            Overview                      #
-#                                          #
-###########################################
-# 
-# 
-# 
-#                   ┌─────────────────────────────────────┐
-#                   │ Raw Metabolomics Input Files        │
-#                   │  (path_amide, sample_infoo, etc.)   │
-#                   └──────────────┬──────────────────────┘
-#                                  │
-#                                  ▼
-#                        ┌──────────────────┐
-#                      │ build_metabs_out │
-#                      │ (build_metabs_function) │
-#                      └──────────────┬──────────┘
-#                                     │
-#                                     ▼
-#   ┌──────────────────────────────┬────────────────────────────────────┐
-#   │                              │                                    │
-#   ▼                              ▼                                    ▼
-#Metabs_long_clean      MetabBuilding_QC, Mapping_file, etc.      CV_and_missingness_file
-#   │
-#   │
-#   │
-#   ▼
-#┌──────────────────────────────┐
-#│ build_traits_out             │
-#│ (build_traits)               │
-#└──────────────┬───────────────┘
-#               │
-#               ▼
-#         Traits_long
-#               │
-#               │
-#               ▼
-#┌──────────────────────────────────────────┐
-#│ LASSO_formula (LASSO_formula_function)   │
-#│ → Builds redmeat_formula_all             │
-#└──────────────┬───────────────────────────┘
-#               │
-#               ▼
-#   ┌──────────────────────────────────────────┐
-#   │ lambda_chunks (split from λ = 1:600)     │
-#   │ kk = 5 (cross-validation folds)          │
-#   └───────────────────┬──────────────────────┘
-#                       │
-#                       ▼
-#          ┌────────────────────────────────────┐
-#          │ lasso_chunk_results                │
-#          │ (parallel_LASSO)                   │
-#          │ pattern = map(lambda_chunk = λ_chunk) │
-#          │ Runs each λ subset in parallel,     │
-#          │ logs → progress/lasso_chunk_X.log   │
-#          └───────────────────┬────────────────┘
-#                              │
-#                              ▼
-#                ┌───────────────────────────────┐
-#                │ lasso_combined                │
-#                │ (combine_results)             │
-#                │ Merges Deviance matrices,     │
-#                │ finds global best λ, refits   │
-#                │ final model                   │
-#                └──────────────┬────────────────┘
-#                               │
-#                               ▼
-#      ┌─────────────────────────────────────────────────────┐
-#      │                    LASSO Outputs                   │
-#      │────────────────────────────────────────────────────│
-#      │ LASSO_optimal_lambda ← lasso_combined$global_opt_λ  │
-#      │ LASSO_deviance       ← lasso_combined$Devianz_all   │
-#      │ LASSO_optimal_model_output ← lasso_combined$final_model │
-#      │ LASSO_coeffs         ← lasso_combined$final_coeffs   │
-#      │ lasso_diagnostics    ← diagnostic plot of Deviance   │
-#      └─────────────────────────────────────────────────────┘
 
-
-############################################
-#                                         #
-#            Script.                      #
-#                                         #
-###########################################
 
 library('targets')
 library('tarchetypes')
@@ -102,7 +19,7 @@ tar_option_set(packages = c("dplyr", "tidyr", "tibble", "readr", "data.table", "
                             "rlang", "purrr", "EnvStats", "mnormt", "MASS", "nlme", "glmmLasso", "dplyr", "future.apply", "progressr", 
                             "furrr", "purrr", "digest", "glmnet", "doMC", "future", "nlme"))
 
-tar_source("/media/Analyses/RedMeat-TopMed-Metabolites/R")
+tar_source("/media/Analyses/MESA-RedMeat-Metabolites/R")
 
 tar_option_set(seed = 11042012)
 
@@ -411,7 +328,7 @@ list(
   #---------Save coeffs ---------#
   
   #save CV file for use
-  tar_target(LASSO_filename, paste0("Redmeat_LASSO_coeffs_", Sys.Date(), ".csv")),
+  tar_target(LASSO_filename, "Redmeat_Epi_ElasticNet_coeffs.csv"),
   
   
   #export CV as csv
@@ -642,7 +559,7 @@ list(
   #---------Save coeffs ---------#
   
   #save CV file for use
-  tar_target(LASSO_CWC_LASSO_filename, paste0("Redmeat_CWC_LASSO_coeffs_", Sys.Date(), ".csv")),
+  tar_target(LASSO_CWC_LASSO_filename, "Redmeat_CWC_ElasticNet_coeffs.csv"),
   
   
   #export CV as csv
@@ -708,69 +625,51 @@ list(
                                                        metab_mapping = Mapping_file,
                                                        traits_db = Traits_long, 
                                                        numeric_covariates = c("age", "PA", "egfr", "energy", "income"),
-                                                       factor_covariates = c("gender", "race", "DM",  "smoking", "site"), 
+                                                       factor_covariates = c("gender", "race", "smoking", "site"), 
                                                        predictor = "redmeat",
                                                        lasso_res1 = LASSO_final_coeffs_db,
                                                        lasso_res2 = LASSO_CWC_final_coeffs_db)
              ),
   
-  #---------Save coeffs ---------#
-  
-  #save CV file for use
-  tar_target(Obs_MWAS_filename, paste0("Redmeat_coeffs_", Sys.Date(), ".csv")),
-  
-  
-  #export CV as csv
-  tar_target(Obs_MWAS_csv,
-             {
-               out_dir  <- "outputs"
-               dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
-               out_path <- file.path(out_dir, Obs_MWAS_filename)
-               write.csv(Obs_MWAS, out_path)
-               out_path
-             },
-             format = "file"
-  ),
+ 
              
   #----------Run-CWC-MWAS----------
   
   tar_target(CWC_MWAS, repeated_measures_MWAS_function(cleaned_metabs = Metabs_long_clean, 
                                                        metab_mapping = Mapping_file,
                                                        traits_db = Traits_long, 
-                                                       numeric_covariates = c("age", "PA", "egfr", "energy", "income"),
-                                                       factor_covariates = c("gender", "race", "DM",  "smoking", "site"), 
+                                                       numeric_covariates = c("age", "PA", "egfr", "energy", "income", "education"),
+                                                       factor_covariates = c("gender", "race", "smoking", "exam"), 
                                                        predictor = "redmeat_cwc_z",
                                                        lasso_res1 = LASSO_final_coeffs_db,
                                                        lasso_res2 = LASSO_CWC_final_coeffs_db)
   ),
   
-  #---------Save coeffs ---------#
+ 
+
+  #--------------------------------------------------------------#
+  #---------- Get N info  ---------------------------------------#
+  #--------------------------------------------------------------#
   
-  #save CV file for use
-  tar_target(CWC_MWAS_filename, paste0("Redmeat_CWC_coeffs_", Sys.Date(), ".csv")),
+ 
+  # Compute N info
+  tar_target(N_info,   
+             get_N_function(
+               traits_db = Traits_long,
+               metabs_db = Metabs_long_clean
+             )
+  )#,
   
-  
-  #export CV as csv
-  tar_target(CWC_MWAS_csv,
-             {
-               out_dir  <- "outputs"
-               dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
-               out_path <- file.path(out_dir, CWC_MWAS_filename)
-               write.csv(CWC_MWAS, out_path)
-               out_path
-             },
-             format = "file"
-  ),            
 
 #----------------------------------------------------------------------------#
 #--------------------------------Quarto file---------------------------------#
 #----------------------------------------------------------------------------#
 
-tarchetypes::tar_quarto(
-  quarto_file,
-  path = "/media/Analyses/RedMeat-TopMed-Metabolites/RedMeat-TopMed-Metabolites_temp4ASN.qmd",
-  quiet = FALSE
-)
+#tarchetypes::tar_quarto(
+#  quarto_file,
+#  path = "/media/Analyses/MESA-RedMeat-Metabolites/RedMeat-TopMed-Metabolites.qmd",
+#  quiet = FALSE
+#)
 
 )
 

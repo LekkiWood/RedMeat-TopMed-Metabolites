@@ -531,4 +531,204 @@ overlap_metabs
 
 ## Parameterizing Red Meat - Metabolite Associations
 
-LASSO coefficients can be tricky to interpret as they represent a combination of variable selection and shrinkage nshinkage is achieved via the L~1~ penalty(. Because of this, you generally **do not interpret Lasso coefficient magnitudes** as the literal effect of X on Y. Instead, they represent a *penalized* estimate used specifically to optimize out-of-sample prediction, and select an optimal set of metbaoloites that jointly predict the red meat variable of interest, without overfitting. To help understand the magnitude of associations for the metabolites selected by the penalized models
+```{r}
+#| label: MWAS-res
+
+obs_selected_metabs <- LASSO_final_db |> 
+                  dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0) |>
+  dplyr::pull(Var)
+
+cwc_selected_metabs <- LASSO_CWC_final_db |> 
+                  dplyr::filter(Var %in% names(Metabs_db) & Estimate !=0) |>
+  dplyr::pull(Var)
+
+redmeat_obs_res <- targets::tar_read(Obs_MWAS) |>
+  dplyr::select(Metab, Beta, SE, P) |>
+  dplyr::rename(Metabolite = Metab,
+                Population_Beta = Beta,
+                Population_SE = SE,
+                Population_P = P) |>
+  dplyr::filter(Metabolite %in% obs_selected_metabs) |>
+  dplyr::mutate(Population_P_fdr = p.adjust(Population_P, method="fdr")) |>
+  dplyr::left_join(Metabs_mapping |> dplyr::select(Metabolite, Original_Metabolite_Name), by = dplyr::join_by(Metabolite)) |>
+  dplyr::select(Metabolite, Original_Metabolite_Name, Population_Beta, Population_SE, Population_P, Population_P_fdr)
+
+write.csv(redmeat_obs_res, "/media/Analyses/RedMeat-TopMed-Metabolites/outputs/Redmeat_parameterized_metabs.csv", row.names = FALSE)
+
+####
+
+redmeat_cwc_res <- targets::tar_read(CWC_MWAS) |>
+  dplyr::select(Metab, Beta, SE, P) |>
+  dplyr::rename(Metabolite = Metab,
+                Within.Person_Beta = Beta,
+                Within.Person_SE = SE,
+                Within.Person_P = P) |>
+  dplyr::filter(Metabolite %in% cwc_selected_metabs) |>
+  dplyr::mutate(Within.Person_P_fdr = p.adjust(Within.Person_P, method="fdr")) |>
+  dplyr::left_join(Metabs_mapping |> dplyr::select(Metabolite, Original_Metabolite_Name), by = dplyr::join_by(Metabolite)) |>
+  dplyr::select(Metabolite, Original_Metabolite_Name, Within.Person_Beta, Within.Person_SE, Within.Person_P, Within.Person_P_fdr)
+
+write.csv(redmeat_cwc_res, "/media/Analyses/RedMeat-TopMed-Metabolites/outputs/Redmeat_CWC_parameterized_metabs.csv", row.names = FALSE)
+
+######
+
+redmeat_obs_res2 <- targets::tar_read(Obs_MWAS) |>
+  dplyr::select(Metab, Beta, SE, P) |>
+  dplyr::rename(Metabolite = Metab,
+                Population_Beta = Beta,
+                Population_SE = SE,
+                Population_P = P) |>
+  dplyr::left_join(Metabs_mapping |> dplyr::select(Metabolite, Original_Metabolite_Name), by = dplyr::join_by(Metabolite)) |>
+  dplyr::select(Metabolite, Original_Metabolite_Name, Population_Beta, Population_SE, Population_P)
+
+write.csv(redmeat_obs_res, "/media/Analyses/RedMeat-TopMed-Metabolites/outputs/Redmeat_parameterized_metabs.csv", row.names = FALSE)
+
+####
+
+redmeat_cwc_res2 <- targets::tar_read(CWC_MWAS) |>
+  dplyr::select(Metab, Beta, SE, P) |>
+  dplyr::rename(Metabolite = Metab,
+                Within.Person_Beta = Beta,
+                Within.Person_SE = SE,
+                Within.Person_P = P) |>
+  dplyr::left_join(Metabs_mapping |> dplyr::select(Metabolite, Original_Metabolite_Name), by = dplyr::join_by(Metabolite)) |>
+  dplyr::select(Metabolite, Original_Metabolite_Name, Within.Person_Beta, Within.Person_SE, Within.Person_P)
+
+
+all_assocs <- redmeat_obs_res2 |>
+  dplyr::full_join(redmeat_cwc_res2, by = dplyr::join_by(Metabolite, Original_Metabolite_Name)) |>
+  dplyr::select(Metabolite, Original_Metabolite_Name, , Population_Beta, Population_SE, Population_P, Within.Person_Beta, Within.Person_SE, Within.Person_P)
+  
+write.csv(all_assocs, "/media/Analyses/RedMeat-TopMed-Metabolites/outputs/Redmeat_metabs_allparameterized.csv", row.names = FALSE)
+```
+
+LASSO coefficients can be tricky to interpret as they represent a combination of variable selection and shrinkage nshinkage is achieved via the L~1~ penalty(. Because of this, you generally **do not interpret Lasso coefficient magnitudes** as the literal effect of X on Y. Instead, they represent a *penalized* estimate used specifically to optimize out-of-sample prediction, and select an optimal set of metbaoloites that jointly predict the red meat variable of interest, without overfitting. To help understand the magnitude of associations for the metabolites selected by the penalized models, for all metabolites selected by the penalized model, we also fit standard multi-level models without a penalty term, specified in the same manner as for the penalized models, but with each metabolite specified as an independent predictor.
+
+For the population-level associations, the full results can be found [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_parameterized_metabs.csv). Of the N=`r nrow(redmeat_obs_res)` metabolites selected by the penalized model, the associations of N=`r nrow(redmeat_obs_res |> dplyr::filter(Population_P<.05))` metabolites were statistically significant at P\<.05. The associations of a further N=`r nrow(redmeat_obs_res |> dplyr::filter(Population_P_fdr<.05))` remained statistically significant after an FDR-correction for multiple testing.
+
+For the within-person associations, the full results can be found [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_CWC_parameterized_metabs.csv). Of the N=`r nrow(redmeat_obs_res)` metabolites selected by the penalized model, the associations of N=`r nrow(redmeat_cwc_res |> dplyr::filter(Within.Person_P<.05))` metabolites were statistically significant at P\<.05. The associations of a further N=`r nrow(redmeat_cwc_res |> dplyr::filter(Within.Person_P_fdr<.05))` remained statistically significant after an FDR-correction for multiple testing.
+
+\[Matthew... this is not ideal.. it speaks ot a lack of power... but it is what it is at this point... this will probably be supplementary material in the paper\]
+
+We also discussed interest in seeing whether the metabolites selected by one penalized model, but not by a second penalized model, truly had differential population-level associations vs. within-person effects. I have put this information [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_metabs_allparameterized.csv).
+
+\[Matthew: When we write the final paper we can talk about how to interpret this. It is a plausible and complex pattern of associations, and we need to decide a clean "take home message" re: red meat and health, and how robust our analyses are. I have an opinion, but I am interested in your thoughts (after ASN...)\].
+
+## Associations of Metabolite scores with health
+
+@tbl-metabolite-score-assocs shows the associations of the two metabolites with our health measures.
+
+```{r}
+#| label: tbl-metabolite-score-assocs
+
+Traits = targets::tar_read(Traits_long)
+
+RM_scores = targets::tar_read(RM_scores) |>
+  tidyr::drop_na(idno)
+WP_scores = targets::tar_read(WP_scores) |>
+  tidyr::drop_na(idno)
+
+dat <- RM_scores |>
+  dplyr::full_join(WP_scores, by = dplyr::join_by(idno, exam)) |>
+  dplyr::left_join(Traits, by = dplyr::join_by(idno, exam))
+
+gtsummary::set_gtsummary_theme(
+  list("tbl_regression-chr:tidy_columns" = c("estimate", "std.error", "p.value"))
+)
+
+###########################
+#.       Glucose.         #
+###########################
+
+#Population-level Association
+
+dat2 <- dat |>
+  dplyr::mutate(score = as.numeric(scale(RepeatedMeasures_score)))
+
+
+model1 <- lmerTest::lmer(scale(rcompanion::blom(glucose)) ~ score + scale(age) + gender + race + site + scale(egfr) + smoking + scale(income) + scale(PA) + (1|idno), data = dat2)  |>
+  gtsummary::tbl_regression(include = "score",
+                            label = list("score" ~  "Fasting Glucose")
+  ) 
+rm(dat2)
+
+#Within-Person Association
+dat2 <- dat |>
+  dplyr::mutate(score = scale(WithinPerson_score))
+
+model2 <- lmerTest::lmer(scale(rcompanion::blom(glucose)) ~ score + scale(age) + gender + race + site + scale(egfr) + smoking + scale(income) + scale(PA) + (1|idno), data = dat2)  |>
+  gtsummary::tbl_regression(include = "score",
+                            label = list("score" ~  "Fasting Glucose")
+  ) 
+rm(dat2)
+
+merged_table1 <- gtsummary::tbl_merge(
+  tbls = list(model1, model2),
+  tab_spanner = c("**Population Level Association**", "**Within-Person Effect**") 
+  )
+
+rm(model1)
+rm(model2)
+
+###########################
+#.       Insulin          #
+###########################
+
+#Population-level Association
+
+dat2 <- dat |>
+  dplyr::mutate(score = as.numeric(scale(RepeatedMeasures_score)))
+
+
+model1 <- lmerTest::lmer(scale(rcompanion::blom(insulin)) ~ score + scale(age) + gender + race + site + scale(egfr) + smoking + scale(income) + scale(PA) + (1|idno), data = dat2)  |>
+  gtsummary::tbl_regression(include = "score",
+                            label = list("score" ~  "Fasting Insulin")
+  ) 
+rm(dat2)
+
+#Within-Person Association
+dat2 <- dat |>
+  dplyr::mutate(score = scale(WithinPerson_score))
+
+model2 <- lmerTest::lmer(scale(rcompanion::blom(insulin)) ~ score + scale(age) + gender + race + site + scale(egfr) + smoking + scale(income) + scale(PA) + (1|idno), data = dat2)  |>
+  gtsummary::tbl_regression(include = "score",
+                            label = list("score" ~  "Fasting Insulin")
+  ) 
+rm(dat2)
+
+merged_table2 <- gtsummary::tbl_merge(
+  tbls = list(model1, model2),
+  tab_spanner = c("**Population Level Association**", "**Within-Person Effect**") 
+  )
+
+rm(model1)
+rm(model2)
+
+###########################
+#                         #
+#.       Merge.           #
+#                         #
+###########################
+
+
+merged_table <- gtsummary::tbl_stack(
+  tbls = list(merged_table1, merged_table2) 
+  )|>
+  gtsummary::as_gt() |>
+  gt::fmt_number(
+    columns = c(estimate_1,  estimate_2,
+                std.error_1, std.error_2),
+    decimals = 3   
+  ) |>
+  gt::fmt_scientific(
+    columns = c(p.value_1, p.value_2)
+  ) |>
+  gt::tab_options(table.font.size = gt::px(12)) |>
+  gt::tab_options(page.orientation = "landscape") |>
+  gt::tab_options(latex.use_longtable = TRUE)
+
+
+
+merged_table
+
+```

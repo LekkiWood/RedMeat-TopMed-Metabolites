@@ -1,0 +1,996 @@
+---
+title: "RedMeat-TopMed-Metabolites"
+author: "LekkiWood (LekkiWood@Gmail.com)"
+date: today
+format:
+  pdf:
+    pdf-engine: lualatex
+    includes:
+      in_header: 'gt_packages.sty'
+    header-includes:
+      - \usepackage{pdflscape}
+      - \setkeys{Gin}{width=\linewidth,height=0.9\textheight,keepaspectratio}
+    toc: true
+    toc-depth: 4
+execute:
+  echo: false
+  warning: false
+  message: false
+  # ensure chunks run from the project root (where _targets/ lives)
+  dir: project
+pdf-engine: latexmk
+editor: visual
+#bibliography: references.bib
+---
+
+```{r}
+#| label: load-packages
+
+
+## Load targets
+if (!requireNamespace("targets", quietly = TRUE)) {
+  stop("The {targets} package is not installed/available in this render session.")
+}
+
+## Load knitr
+if (!requireNamespace("knitr", quietly = TRUE)) {
+  stop("The {knitr} package is not installed/available in this render session.")
+}
+
+## Load quarto
+if (!requireNamespace("quarto", quietly = TRUE)) {
+  stop("The {quarto} package is not installed/available in this render session.")
+}
+
+## Load rcompanion
+if (!requireNamespace("rcompanion", quietly = TRUE)) {
+  stop("The {rcompanion} package is not installed/available in this render session.")
+}
+
+## Load Venn
+if (!requireNamespace("VennDiagram", quietly = TRUE)) {
+  stop("The {VennDiagram} package is not installed/available in this render session.")
+}
+```
+
+\newpage
+
+# Important notes
+
+- You should always check you have the most recent files! I use dynamic dates, so this can be done by checking that your files match the versions on GitHub:
+
+  - My profile can be found [here](https://github.com/LekkiWood)
+
+  - My repositories are listed [here](https://github.com/LekkiWood?tab=repositories)
+
+  - The most recent version of this PDF README file can be found [here](https://github.com/LekkiWood/MESA-Red%20Meat-Metabolites/blob/main/RedMeat-TopMed-Metabolites.pdf)
+
+  - The most recent version of the source code for this README file can be found [here](https://github.com/LekkiWood/MESA-Red%20Meat-Metabolites/blob/main/RedMeat-TopMed-Metabolites.qmd)
+
+  - The most recent source code for creating the output files can be found [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/_targets.R)
+
+# Summary
+
+\newpage
+
+#Data Preparation
+
+Matthew: much of this would not be reported in a manuscript.. this is an FYI / for reproducibility.
+
+## Metabolites
+
+```{r}
+#| label: load-file-info
+#| cache: TRUE
+
+Metab_table_QC_info <- targets::tar_read(MetabBuilding_QC)
+QC_info_mapping <- targets::tar_read(MappingQC_info)
+CV_table <- targets::tar_read(CV_and_missingness_file)
+Duplicate_flag_file <- targets::tar_read(Duplicates_file)
+final_file_info <- targets::tar_read(Metabs_long_clean)
+
+
+path_amide <- targets::tar_read(path_amide)
+path_C8 <- targets::tar_read(path_C8)
+path_C18 <- targets::tar_read(path_C18)
+path_HILIC <- targets::tar_read(path_HILIC)
+path_amide_info <- targets::tar_read(path_amide_info)
+path_C8_info <- targets::tar_read(path_C8_info)
+path_C18_info <- targets::tar_read(path_C18_info)
+path_HILIC_info <- targets::tar_read(path_HILIC_info)
+path_bridge <- targets::tar_read(path_bridge)
+```
+
+### Build the Metabolite Table
+
+#### Input Files
+
+- A table of metabolite abundances from the amide assay: `{r} print(unlist(strsplit(path_amide, split="/"))[7])`
+- A table of metabolite abundances from the C8-pos assay: `{r} print(unlist(strsplit(path_C8, split="/"))[7])`
+- A table of metabolite abundances from the C18-neg assay: `{r} print(unlist(strsplit(path_C18, split="/"))[7])`
+- A table of metabolite abundances from the HILIC assay: `{r} print(unlist(strsplit(path_HILIC, split="/"))[7])`
+- Sample information for the amide assay: `{r} print(unlist(strsplit(path_amide_info, split="/"))[7])`
+- Sample information for the C8-pos assay: `{r} print(unlist(strsplit(path_C8_info, split="/"))[7])`
+- Sample information for the C18-neg assay: `{r} print(unlist(strsplit(path_C18_info, split="/"))[7])`
+- Sample information for the HILIC assay: `{r} print(unlist(strsplit(path_HILIC_info, split="/"))[7])`
+- A file to bridge SHARe ids (sidno) with MESA IDs (idno) `{r} print(unlist(strsplit(path_bridge, split="/"))[7])`
+
+#### Raw Metabolite Tables Info
+
+##### Amide
+
+- The amide sample info file contained information on N=`{r} Metab_table_QC_info$sample_info_dims$sample_info_dims_amide[1]` TOM IDs (each corresponding to one participant's abundances at one exam).
+- Duplicates were identified (see @tbl-amide-dupes) and removed.
+
+```{r}
+#| label: tbl-amide-dupes 
+#| tbl-cap: "Duplicate IDs in raw amide assay data"
+#| cache: TRUE
+
+amide_dupes_table <- Metab_table_QC_info$duplicates_in_raw_tables$amide_dupes |>
+  gt::gt() |>
+  gt::tab_options(table.width = gt::pct(30)) |>
+  gt::as_latex()
+
+amide_dupes_table
+```
+
+- Once the duplicates were removed, the final amide table contained data on N= `{r} Metab_table_QC_info$final_table_dims$final_table_dims_amide[2]-4` metabolites across `{r} Metab_table_QC_info$final_table_dims$final_table_dims_amide[1]` observations.
+
+##### C8
+
+- The C8 sample info file contained information on N=`{r} Metab_table_QC_info$sample_info_dims$sample_info_dims_C8[1]` TOM IDs (each corresponding to one participant's abundances at one exam).
+- Duplicates were identified (see @tbl-C8-dupes) and removed.
+
+```{r}
+#| label: tbl-C8-dupes 
+#| tbl-cap: "Duplicate IDs in raw C8 assay data"
+#| cache: TRUE
+
+C8_dupes_table <- Metab_table_QC_info$duplicates_in_raw_tables$C8_dupes |>
+  gt::gt() |>
+  gt::tab_options(table.width = gt::pct(30)) |>
+  gt::as_latex()
+
+C8_dupes_table
+```
+
+- Once the duplicates were removed, the final amide table contained data on N= `{r} Metab_table_QC_info$final_table_dims$final_table_dims_C8[2]-4` metabolites across `{r} Metab_table_QC_info$final_table_dims$final_table_dims_C8[1]` observations.
+
+##### C18
+
+- The C18 sample info file contained information on N=`{r} Metab_table_QC_info$sample_info_dims$sample_info_dims_C18[1]` TOM IDs (each corresponding to one participant's abundances at one exam).
+- Duplicates were identified (see @tbl-C18-dupes) and removed.
+
+```{r}
+#| label: tbl-C18-dupes 
+#| tbl-cap: "Duplicate IDs in raw C8 assay data"
+#| cache: TRUE
+
+C18_dupes_table <- Metab_table_QC_info$duplicates_in_raw_tables$C18_dupes |>
+  gt::gt() |>
+  gt::tab_options(table.width = gt::pct(30)) |>
+  gt::as_latex()
+
+C18_dupes_table
+```
+
+- Once the duplicates were removed, the final amide table contained data on N= `{r} Metab_table_QC_info$final_table_dims$final_table_dims_C18[2]-4` metabolites across `{r} Metab_table_QC_info$final_table_dims$final_table_dims_C18[1]` observations.
+
+##### HILIC
+
+- The HILIC sample info file contained information on N=`{r} Metab_table_QC_info$sample_info_dims$sample_info_dims_HILIC[1]` TOM IDs (each corresponding to one participant's abundances at one exam).
+- Duplicates were identified (see @tbl-HILIC-dupes) and removed.
+
+```{r}
+#| label: tbl-HILIC-dupes 
+#| tbl-cap: "Duplicate IDs in raw HILIC assay data"
+#| cache: TRUE
+
+HILIC_dupes_table <- Metab_table_QC_info$duplicates_in_raw_tables$HILIC_dupes |>
+  gt::gt() |>
+  gt::tab_options(table.width = gt::pct(30)) |>
+  gt::as_latex()
+
+HILIC_dupes_table
+```
+
+- Once the duplicates were removed, the final amide table contained data on N= `{r} Metab_table_QC_info$final_table_dims$final_table_dims_HILIC[2]-4` metabolites across `{r} Metab_table_QC_info$final_table_dims$final_table_dims_HILIC[1]` observations.
+- The cleaned and transposed files from each assay were merged into a final, long form metabolite table with N=`{r} Metab_table_QC_info$final_df_info$final_metabs_merged_dim[1]` observations on `{r} Metab_table_QC_info$final_df_info$final_metabs_merged_dim[2]` variables (5 variables are not metabolites: sidno, subject_id, TOM_ID, exam, idno).
+
+#### Build Mapping File
+
+- The following variables were created:
+  - "Presence MESA X01" (coded 1)
+  - "Presence MESA PILOT" (coded 1)
+  - "Presence MESA MESA2" (coded 1).
+  
+- The original metabolite name (where known) from the lab was preserved as the variable 'Original_Metabolite_Name'
+
+- A variable "Known_Compound" was created to indicate whether the compound had been assigned a name as of `{r} format(Sys.Date(), "%A, %B, %d, %Y")`^2^ (coding 1= yes, 0=no).
+
+- For unknown compounds, the lab ID (arbitrarily assigned by The Broad) assigned within the X01 study was used, and prefixed with the assay name.
+
+- The number of known/unknown compounds per assay is:
+  - Amide: N= `{r} print(length(CV_table |> dplyr::filter(Assay=="Amide" & Known==1) |> dplyr::pull(Metabolite)))` known compounds and no unknown compounds.
+  - C18: N= `{r} print(length(CV_table |> dplyr::filter(Assay=="C18" & Known==1) |> dplyr::pull(Metabolite)))` known compounds and `{r} print(length(CV_table |> dplyr::filter(Assay=="C18" & Known==0) |> dplyr::pull(Metabolite)))` unknown compounds.
+  
+  - C8: N= `{r} print(length(CV_table |> dplyr::filter(Assay=="C8" & Known==1) |> dplyr::pull(Metabolite)))` known compounds and `{r} print(length(CV_table |> dplyr::filter(Assay=="C8" & Known==0) |> dplyr::pull(Metabolite)))` unknown compounds.
+  
+  - HILIC: N= `{r} print(length(CV_table |> dplyr::filter(Assay=="HILIC" & Known==1) |> dplyr::pull(Metabolite)))` known compounds and `{r} print(length(CV_table |> dplyr::filter(Assay=="HILIC" & Known==0) |> dplyr::pull(Metabolite)))` unknown compounds.
+  
+- The final mapping file has information on `{r} print(length(CV_table |> dplyr::filter(Known==1) |> dplyr::pull(Metabolite)))` known compounds and `{r} print(length(CV_table |> dplyr::filter(Known==0) |> dplyr::pull(Metabolite)))` unknown compounds
+
+#### Build QC data (missingness and CV)
+
+##### Coefficients of Variation
+
+- For each of the four metabolite tables above, the QC samples for calculating the coefficient of variation (CV) were selected by selecting Sample_Type=="QC-pooled_ref" from the sample info files.
+- CVs were calculated across all exams (since batches were not stratified by exam) as the mean of all QC samples, divided by the standard deviation of all QC samples, multiplied by 100, and saved as the variable "cv".
+- Across, all assays, the mean CV was `{r} mean(CV_table$cv_percent, na.rm=TRUE)`, with a range of `{r} min(CV_table$cv_percent, na.rm=TRUE)` - `{r} max(CV_table$cv_percent, na.rm=TRUE)`.
+- The CVs per assay, in @tbl-cvs-by-assay:
+
+```{r}
+#| label: tbl-cvs-by-assay
+#| tbl-cap: "Coefficients of Variation by assay"
+#| cache: TRUE
+
+
+CV_table1 <- CV_table |>
+  dplyr::group_by(Assay) |>
+  dplyr::summarise(Mean_CV = mean(cv_percent, na.rm=TRUE)) |>
+  gt::gt() |>
+  gt::tab_options(table.width = gt::pct(30)) |>
+  gt::as_latex()
+
+CV_table1 
+
+```
+
+- The CVs per assay, stratified into known and unknown metabolites are in @tbl-cvs-by-assay-by-known-status:
+
+```{r}
+#| label: tbl-cvs-by-assay-by-known-status
+#| tbl-cap: "Coefficients of Variation by assay and exam"
+#| cache: TRUE
+
+
+CV_table2 <- CV_table |>
+  dplyr::group_by(Assay, Known) |>
+  dplyr::summarise(Mean_CV = mean(cv_percent, na.rm=TRUE)) |>
+  dplyr::mutate(Known = dplyr::case_when(Known==1 ~ "Known Metabolites",
+                                         Known==0 ~ "Unknown Compounds",
+                                         TRUE ~ NA_character_)) 
+CV_table2 <- CV_table2 |>
+  gt::gt() |>
+  gt::tab_options(table.width = gt::pct(50)) |>
+  gt::fmt_number(decimals = 2) |>
+  gt::as_latex() 
+
+CV_table2
+
+```
+
+##### Missingness
+
+- The proportion of missingness for each assay, by exam is in @tbl-missingness-by-assay-by-exam (note, this is for people with assay data at each exam, missingness does not include, for example, people who have data at exam 1, but have no data at exam 5):
+
+```{r}
+#| label: tbl-missingness-by-assay-by-exam
+#| tbl-cap: "Missingness by assay, and by exam"
+#| cache: TRUE
+
+
+CV_table3 <- CV_table |>
+  dplyr::group_by(Assay) |>
+  dplyr::summarise(Overall = mean(missing_all_exams, na.rm=TRUE),
+                   E1 = mean(missing_exam_1, na.rm=TRUE),
+                   E5 = mean(missing_exam_5, na.rm=TRUE),
+                   E6 = mean(missing_exam_6, na.rm=TRUE)) |>
+  gt::gt() |>
+  gt::tab_options(table.width = gt::pct(90)) |>
+  gt::as_latex()
+
+CV_table3
+
+```
+
+#### Removing Duplicate Metabolites
+
+##### Annotation cleaning
+
+- Some light cleaning of the metabolite annotations was conducted (note: this is an ongoing process):
+- Glutamic acid had different HMDBs on the original HILIC and amide assays (see @tbl-glutamic-acid). Per advice: The HMDB from the HILIC was retained for both assays, and these were treated as the same compound.
+
+|               |             |               |       |
+|---------------|-------------|---------------|-------|
+| Lab ID        | HMDB        | Metabolite    | Assay |
+| QI18171       | HMDB0000148 | Glutamic acid | hilic |
+| Glutamic.acid | HMDB0003339 | Glutamic acid | amide |
+
+: HMDBs for Glutamic Acid in raw data
+
+- The metabolite Glutamic acid had the HMDB ID changed from HMDB0003339 `->` HMDB0000148.
+- For the amide assay, the compound with HMDB ID "HMDB0000122" had a different name to that used for the HILIC and C18 assays (see @tbl-HMDB0000122). Both names atr "correct", just different conventions, so these were treated as the same compounds when screening for duplicates.
+
++---------------------+---------------+---------------------+---------------+
+|                     |               |                     |               |
++=====================+===============+=====================+===============+
+| Lab ID              | HMDB          | Metabolite          | Assay         |
++---------------------+---------------+---------------------+---------------+
+| Glucose.Fructose.   | HMDB0000122   | Glucose/Fructose/   | amide         |
+|                     |               |                     |               |
+| Galactose_waterloss |               | Galactose_waterloss |               |
++---------------------+---------------+---------------------+---------------+
+| QI3656              | HMDB0000122   | Hexose              | c18           |
++---------------------+---------------+---------------------+---------------+
+| QI14125             | HMDB0000122   | Hexose              | hilic         |
++---------------------+---------------+---------------------+---------------+
+
+: Annotations for HMDB0000122 in raw data
+
+##### Removing duplicated metabolites
+
+- The HMDB_ID variable was used to flag compounds measured on more than one assay
+- To flag metabolites included on more than one asssay, a variable was created "Retain", with the following coding:
+  - 0, labelled "Unique or missing HMDB ID": an unknown compound, or a unique HMDB ID
+  - 1, labelled "Duplicated HMDB ID with lowest CV": A duplicated HMDB ID with the lowest coefficient of variation (CV) across all compounds sharing that HMDB ID
+  - 2, labelled "Internal standard": A compound used as an internal standard (generally excluded from standard analyses)
+  - 3, labelled "Duplicated HMDB_ID and not lowest CV": A duplicated HMDB ID that does *not* have the lowest coefficient of variation (CV) across all compounds sharing that HMDB ID (generally excluded from analyses where you do not want the same compound included more than once)
+- See @tbl-dupe-metabs
+
+```{r}
+#| label: tbl-dupe-metabs
+#| tbl-cap: "Information on metabolites included on more than one assay"
+#| cache: TRUE
+
+
+
+dupe_metabs_table <- as.data.frame(table(Duplicate_flag_file$Retain)) 
+
+colnames(dupe_metabs_table) <- c("Metabolite Duplicate status", "Frequency (N)")
+
+dupe_metabs_table2 <- dupe_metabs_table |>
+  gt::gt() |>
+  gt::tab_options(table.width = gt::pct(70)) |>
+  gt::as_latex()
+
+dupe_metabs_table2
+```
+
+- All metabolites that had either a unique HMDB ID, or that had a duplicated HMDB ID but had the lowest CV from all those metabolites with the same HMDB ID were retained, all others were removed from the analysis.
+- The final metabolite file contained information on N=`{r} print(final_file_info)[2] - 5` metabolites across N=`{r} final_file_info[1]` observations.
+
+### Some Unresolved Issues To Note
+
+- The raw data from the C18 assay has a smaller N than some others
+
+- Most duplicated compounds are measured on different assays. One exception is LPC 16:0/0:0, which is measured twice on the C8 assay, with the same HMDB, but different assigned LAB IDs. For now, the compound with the Compound ID in the X01 of "TF04" is renamed as LPC 16:0/0:0_v2.
+
+- Some lipids have the same HMDB ID, but the different common metabolite names, and these names are not listed as synonyms in the [HMDB](https://www.hmdb.ca/) (e.g., Cer 40:1;O2 (C8 assay) is not listed as a synonym for 18:1 (HILIC), and Cer 42:2;O2_A (C8) is not listed for a synonym for Cer 18:1;O2/24:1 (HILIC). For now, these are treated as separate compounds (see @tbl-HMDB0004952 and @tbl-HMDB0004953).
+
+|         |             |                  |       |
+|---------|-------------|------------------|-------|
+| Lab ID  | HMDB        | Metabolite       | Assay |
+| QI04610 | HMDB0004952 | Cer 18:1;O2/22:0 | hilic |
+| QI8023  | HMDB0004952 | Cer 40:1;O2      | c8    |
+
+: Annotations for HMDB0004952 in raw data
+
+|         |             |                  |       |
+|---------|-------------|------------------|-------|
+| Lab ID  | HMDB        | Metabolite       | Assay |
+| QI04540 | HMDB0004953 | Cer 18:1;O2/24:1 | hilic |
+| QI4265  | HMDB0004953 | Cer 42:2;O2_A    | c8    |
+
+: Annotations for HMDB0004952 in raw data
+
+## Build Traits
+
+```{r}
+#| label: read-in-traits-info
+
+
+path_E1 <- targets::tar_read(path_exam1_file)
+path_E5  <- targets::tar_read(path_exam5_file)
+path_E6 <- targets::tar_read(path_exam6_file)
+
+path_E1_nutr <- targets::tar_read(path_e1_nutr_file)
+path_E1_food <- targets::tar_read(path_e1_ffq_file)
+path_E5_nutr <- targets::tar_read(path_e5_nutr_file)
+path_E5_food <- targets::tar_read(path_e5_ffq_file)
+
+
+#path_T2D <- targets::tar_read(DMEvents_csv_loci)
+
+#path_apoe <- targets::tar_read(MIND_4_sas7bdat_loci)
+#path_ADRD <- targets::tar_read(path_cognition_file)
+
+
+```
+
+### Input Files
+
+- Exam 1 (baseline) covariates and outcomes `{r} print(base::unlist(base::strsplit(path_E1, split="/"))[7])`
+
+- Exam 5 covariates and outcomes `{r} print(base::unlist(base::strsplit(path_E5, split="/"))[7])`
+
+
+- Exam 1 (baseline) energy intake `{r} print(base::unlist(base::strsplit(path_E1_nutr, split="/"))[7])`
+
+- Exam 5 energy intake `{r} print(base::unlist(base::strsplit(path_E5_nutr, split="/"))[7])`
+
+- Exam 1 (baseline) red meat intake `{r} print(base::unlist(base::strsplit(path_E1_food, split="/"))[7])`
+
+- Exam 5 redmeat intake `{r} print(base::unlist(base::strsplit(path_E5_food, split="/"))[7])`
+
+`
+
+### Coding
+
+#### Predictors
+
+- Red meat was intake of unprocessed red meat in servings / day
+
+#### Outcomes
+
+- Insulin was measured in mU/L
+- Glucose was measured in mg/dL
+- HDL was measured in mg/dL
+- LDL was measured in mg/dL
+- Triglycerides was measures in mg/dL
+
+#### Covariates
+
+- Race was coded as a factor variable; coded 1= European-American, 2 = Chinese-American, 3 = African-American, 4 = Hispanic-American
+- Site was coded as a factor variable; 1 = Wake Forest, 2= Columbia, 3= Johns Hopkins (Baltimore), 4= Minnesota (Twin Cities), 5= Northwestern (Evanston. IL), 6 = UCLA (Los Angeles, VA)
+- Sex was coded as a factor variable; coded 1 = female, 2 = male
+- Age was in years
+- Smoking was a ordinal variable: 0 = Never, 1 = Former, 2 = Current
+- Physical activity (PA) is total moderate of vigorous physical activity in Met-Min / week
+- Caloric intake (energy) is calories / day
+- Kidney functioning is estimated by estimated glomerular filtration rate (eGFR)
+
+#### Outcomes
+
+- Fastiung glucose and insulin were continuous.
+
+## Build Final Sample
+
+```{r}
+#| label: build-final-sample
+
+phenos <- targets::tar_read(Traits_long)
+
+N_info <- targets::tar_read(N_info)
+```
+
+- There were N=`{r} print(length(unique(N_info$ids_E1$idno)))` participants at MESA baseline, and N=`{r} print(length(unique(N_info$ids_E5$idno)))` participants at MESA exam 5.
+
+
+- Of the 6,814 participants at MESA baseline, N=`{r} print(length(unique(N_info$ids_with_metabs$sidno)))` participants had metabolomics data.
+
+- Of the N=`{r} print(length(unique(N_info$ids_with_metabs$sidno)))` participants with metabolomics data, N=`{r} print(length(unique(N_info$ids_with_E1metabs$sidno)))` participants with metabolomics data at exam 1,  and N=`{r} print(length(unique(N_info$ids_with_E5metabs$sidno)))` participants with metabolomics data at exam 5, all of whom had diet and glucose/insulin data
+
+- N=`{r} print(length(unique(N_info$ids_with_E1E5metabs$sidno)))` participants had metabolomics data at exams 5 and 6, of whom `{r} print(length(unique(N_info$ids_with_metabs_and_diet$sidno)))` participants also had diet data, with `{r} print(length(unique(N_info$ids_with_metabs_and_2diet$sidno)))` having diet data at both exam 1 and exam 5, which is necessary for decomposing associations.
+
+
+
+
+\newpage
+
+# Methods
+
+## Measures
+
+### Metabolome-wide metabolites
+
+Metabolome-wide metabolite profiling was conducted in fasted plasma samples using four complementary liquid chromatography tandem mass spectrometry (LC-MS)-based methods that couple distinct metabolite extraction and LC techniques with high resolution, accurate mass (HRAM) MS profiling to provide a hybrid analysis of hundreds of metabolites of confirmed identity and thousands of LC-MS peaks from yet to be identified compounds. Each of the four LC-MS methods is established on dedicated instruments consisting of Shimadzu Nexera UHPLCs coupled to Thermo Q Exactive series orbitrap mass spectrometers and includes measurement of (i) polar and nonpolar lipids using C8 reversed phase LC and positive ion MS (C8-pos); (ii) free fatty acids, bile acids, and metabolites of intermediate polarity using C18 reversed phase LC and negative ion MS (C18-neg); (iii) amino acids, amino acid metabolites, acylcarnitines, dipeptides, and other cationic polar metabolites using hydrophilic interaction liquid chromatography and positive ion MS (HILIC-pos); and (iv) sugars, organic acids, purines, pyrimidines, and other anionic polar metabolites using HILIC and negative ion MS (HILIC-neg).
+
+*Data Processing and compound identification*: Targeted data processing of known metabolites was achieved using TraceFinder (v 3.3, Thermo Scientific) software, utilizing an in-house library of over 3000 authentic reference standards with confirmed identities of \>700 metabolites (MSI Level 1 ID308). Mixtures of reference standards and reference samples are included in each analysis queue to confirm IDs in every dataset. HRAM, nontargeted data are processed using Progenesis QI software (Nonlinear Dynamics) to detect peaks, perform chromatographic retention time alignment, and integrate peak areas. Metabolites of confirmed identity are then annotated in the dataset, and unknowns are “tagged” using their measured mass-to-charge ratios (m/z) and chromatographic retention times (RT).
+
+Unknowns of interest were initially identified via acquisition of product ion spectra (MS/MS) using a Thermo Scientific ID-X coupled with machine learning-based structure prediction using the SIRIUS/CSI:FingerID workflow and similarity searching using GNPS309, 310. Identities were then confirmed using synthetic standards.
+
+*Quality control*: During aliquoting, each sample was visually inspected and a pooled QC sample created. LC-MS system performance was qualified prior to analyses using repeated analyses of pooled QCs. During sample analyses: i) mixtures of up to \~150 synthetic reference compounds were analyzed before and after each sample queue to assess consistency of peak shapes, RTs, and signal intensity; ii) internal standards are added to every sample to assure accurate sample volume injection and to monitor drift in sensitivity, and iii) and pairs of pooled QC samples are analyzed at intervals of 20 study samples (10% frequency overall), with the first sample from each pair used for drift correction and the second used to evaluate analytical precision. Out of \>700 identified plasma metabolites and lipids, XXX were measured with a coefficient of variation (CV) \< 10%. Similarly, \>XXXX peaks from unknowns are consistently measured with a CV \<10% in each LC-MS method.
+
+## Statistics
+
+All analyses were conducted using R software (version 4.0.5)
+
+### Participant characteristics
+
+Demographic, dietary and health information were each calculated as a mean (+/- standard deviation; SD) for continuous variables, or total number (unweighted N) and percentage (%) for categorical or ordinal variables.
+
+### Metabolome-wide Associations with Red Meat Intake
+
+#### Observed associations
+
+To identify metabolites associated with red meat intake, we first estimated the observed red meat-metabolite associations using data from exam 1 and exam 5 within a penalized multi-level model with a random intercept, nested within person, conducted via elastic net with a 50/50 training:test split. Elastic net was chosen as this combines the strengths of both L~1~ (Lasso) and L~2~ (Ridge) penalties, thus optimizing the trade-off between sparsity (L~1~) and stability (L~2~) to prevent overfitting. At level 1, red meat intake in servings / day was specified as the outcome, with all metabolome-wide metabolites as predictors, alongside the following covariates: age, kideny function (eGFR), diabetes status, income level, physical activity, highest education level achieved, average daily energy intake, gender, time point (exam 1 / exam 5), race\\ethnicity, and smoking status, which was nested within person (level 2). A penalty parameter was added ($\lambda$), selected via 5-fold cross-validation to optimize predictive performance, and the optimal $\lambda$ applied to metabolite coefficients only (i.e., not covariates), shrinking weak or redundant metabolite predictors toward zero and mitigating over-fitting and multi-collinearity among highly correlated metabolites.
+
+Age, physical activity, estimated glomerular filtration rate, daily energy intake, diabetes status, smoking status, data collection site and exam included as time-varying covariates, and sex, race`\`ethnicity, and income level included as time invariant covariates. All non-categorical variables (metabolite predictors, red meat outcome, and covariates) were scaled and standardized (z-score standardization to a mean of 0 and a standard deviation of 1) prior to inclusion in the models.
+
+#### Within-Person Effects
+
+Next, we identified metabolites that covaried with changes in red meat intake within individuals via centering to isolate within-person effects which reflect the covariation of the predictor and outcome within individuals over time. These capture statistical responses of the outcome to change in the predictor and may reflect causal effects, but can also be influenced by time-varying confounding (i.e., influences that covary with both the predictor and the outcome) and measurement error. First: the person-mean for red meat intake was calculated, that is, the mean red meat intake across both time points for each participant. For the ${\mathit{i}}$th person, this is derived using the equation:
+
+$$\bar{X}_i = \frac{1}{n_i} \sum_{j=1}^{n_i} X_{ij}$$
+
+where $X{\mathit{_i}{_j}}$ is the observation of red meat intake for the ${\mathit{i}}$th person at the ${\mathit{j}}$th time point. This removes any within-person variance and represents each participant's average red meat intake during the course of study, and by definition only contains between-person variance (plus possible measurement error).
+
+Next, the observations of red meat intake are person centered, by subtracting the person mean from each observation. For the ${\mathit{i}}$th person, at the ${\mathit{j}}$th time point, this is derived using the equation:
+
+$$X_{ij}^{\mathrm{CWC}} = X_{ij} - \bar{X}_i$$
+
+where $X{\mathit{_i}{_j}}$ is the observation of red meat intake for the ${\mathit{i}}$th person at the ${\mathit{j}}$th time point. This centering approach removes any between-person variance in red meat intake, with each observation representing the participant's difference in intake compared to their own usual intake, and thus by definition only contains within-person variance.
+
+This person centered variable was then used as the outcome in penalized, multi-level models, otherwise specified as above.
+
+### Creation of metabolite summary scores
+
+For each parameter (observed associations \[$\beta{\mathit{_O}{_b}{_s}}$\], and within-person effects \[$\beta{\mathit{_W}{_P}}$\], a weighted sum of all metabolites selected by the elastic net model for that parameter was created at each of exam 1, 5 and 6, by multiplying individual standardized metabolite values by the relevant coefficient from the penalized model. Thus, two scores were created for each participant at each time point: (1) a score representing the sum of significant metabolites from the observed association analyses ($Score{\mathit{_O}{_b}{_s}}$); and (2) a score representing the sum of significant metabolites from the within-person effects ($Score{\mathit{_W}{_P}}$).
+
+### Associations Between Metabolite Scores and Health
+
+We examined the associations between the two metabolite scores and health using data from exam 6, to decouple the data used for these analyses from the data used to generate the metabolite scores. Since we were restricted to using data from one exam only, we examined observed associations between each of four metabolite scores, and each of cardiometabolic disease risk factors using standard linear regression models, with the metabolite scores as the predictor and risk factor as the outcome, which was transformed using an inverse normal transformation prior to inclusion in the models. The exception was for incident diabetes, for which metabolite scores from baseline were used for all without T2D at this exam. All models included the same set of covariates used in the penalized models, specified as fixed effects.
+
+\newpage
+
+# Results
+
+```{r}
+#| label: read-in-results
+
+idnos <- N_info$ids_with_E1E5metabs |>
+  dplyr::pull(sidno)
+
+Traits_table <- targets::tar_read(Traits_long)
+Traits_db <- Traits_table |>
+  dplyr::filter(sidno %in% idnos)
+
+```
+
+## Sample descriptives
+
+- Sample descriptives at baseline are available in @tbl-of-descriptives, and by quintile of red meat intake in @tbl-of-descriptives-meat-quintiles
+
+::: landscape
+```{r}
+#| label: tbl-of-descriptives
+#| tbl-cap: Sample Descriptives, Stratified by Exam
+#| cache: FALSE
+
+bold_labels <- c(
+  "Age (y)", "Gender", "Race or ethnicity", "Smoking status", "Physical activity, (MET-min/week)", "Estimated glomerular filtration rate", "Red meat intake, (svd/day)", "Energy intake, (kcals/day)", "Fasting glucose (mg/dL)", "Fasting insulin (mu/mL)"
+  )
+  
+
+table1 <- Traits_db |> 
+  dplyr::filter(exam==1 | exam ==5) |>
+  dplyr::mutate(
+        Exam_desc = factor(exam,
+                       levels = c("1", "5"),
+                       labels = c("Exam 1", "Exam 5")),
+        gender_desc = factor(gender,
+                       levels = c("Female", "Male"),
+                       labels = c("Female", "Male"))
+        ) |>
+          gtsummary::tbl_summary(
+            include = c(age, gender_desc, race, smoking, PA, egfr, energy, redmeat, glucose, insulin),
+            by = exam,
+            statistic = list(
+              gtsummary::all_continuous() ~ "{mean} ({sd})",
+              gtsummary::all_categorical() ~ "{n} / {N} ({p}%)"
+              ), 
+            missing = "no", # don't list missing data separately
+            digits = gtsummary::all_continuous() ~ 2, 
+            label = list(age = "Age (y)",
+                 gender_desc = "Gender",
+                 race = "Race or ethnicity",
+                 smoking = "Smoking status",
+                 PA = "Physical activity, (MET-min/week)",
+                 egfr = "Estimated glomerular filtration rate",
+                redmeat = "Red meat intake, (svd/day)", 
+                 energy = "Energy intake, (kcals/day)",     
+                 glucose = "Fasting glucose (mg/dL)",
+                 insulin = "Fasting insulin (mu/mL)"
+                ),
+             type = list(age ~ "continuous", 
+                         gender_desc ~ "categorical",
+                         race ~ "categorical", 
+                         smoking ~ "categorical", 
+                         PA ~ "continuous", 
+                         egfr ~ "continuous", 
+                         redmeat  ~ "continuous", 
+                         energy ~ "continuous", 
+                         glucose ~ "continuous",
+                         insulin ~ "continuous")
+          ) |>
+  gtsummary::modify_spanning_header(
+    gtsummary::all_stat_cols() ~ "Exam"
+  ) |>
+  gtsummary::as_gt() |>
+  gt::tab_options(page.orientation = "landscape") |>
+  gt::tab_style(
+    style = gt::cell_text(weight = "bold"),
+    locations = gt::cells_body(
+      columns = "label",
+      rows = label %in% bold_labels
+    )
+    ) |>
+# Bold *any* spanning headers 
+  gt::tab_style(
+    style = gt::cell_text(weight = "bold"),
+    locations = gt::cells_column_spanners()
+  ) |>
+  gt::tab_options(latex.use_longtable = TRUE)
+
+table1
+
+rm(bold_labels)
+rm(table1)
+
+
+```
+\newpage
+
+```{r}
+#| label: tbl-of-descriptives-meat-quintiles
+#| tbl-cap: Sample Descriptives, Quintiles of Meat Intake
+#| cache: FALSE
+
+bold_labels <- c(
+  "Age (y)", "Gender", "Race or ethnicity", "Smoking status", "Physical activity, (MET-min/week)", "Estimated glomerular filtration rate", "Red meat intake, (svd/day)", "Energy intake, (kcals/day)", "Fasting glucose (mg/dL)", "Fasting insulin (mu/mL)"
+  )
+  
+
+table1 <- Traits_db |> 
+  dplyr::filter(exam==1 | exam ==5) |>
+  dplyr::mutate(
+        Exam_desc = factor(exam,
+                       levels = c("1", "5"),
+                       labels = c("Exam 1", "Exam 5")),
+        gender_desc = factor(gender,
+                       levels = c("Female", "Male"),
+                       labels = c("Female", "Male")),
+        race_desc = factor(race,
+                       levels = c("1", "2", "3", "4"),
+                       labels = c("Non-Hispanic White", "Chinese American", "Black/African-American", "Hispanic")),
+        meat_desc = cut(redmeat, 
+                 breaks = quantile(redmeat, probs = seq(0, 1, by = 0.2), na.rm = TRUE), 
+                 include.lowest = TRUE, 
+                 labels = c("Q1", "Q2", "Q3", "Q4", "Q5"))
+        ) |>
+          gtsummary::tbl_summary(
+            include = c(age, gender_desc, race, smoking, PA, egfr, energy, redmeat, glucose, insulin, meat_desc),
+            by = meat_desc,
+            statistic = list(
+              gtsummary::all_continuous() ~ "{mean} ({sd})",
+              gtsummary::all_categorical() ~ "{n} / {N} ({p}%)"
+              ), 
+            missing = "no", # don't list missing data separately
+            digits = gtsummary::all_continuous() ~ 2, 
+            label = list(age = "Age (y)",
+                 gender_desc = "Gender",
+                 race = "Race or ethnicity",
+                 smoking = "Smoking status",
+                 PA = "Physical activity, (MET-min/week)",
+                 egfr = "Estimated glomerular filtration rate",
+                redmeat = "Red meat intake, (svd/day)", 
+                 energy = "Energy intake, (kcals/day)",     
+                 glucose = "Fasting glucose (mg/dL)",
+                 insulin = "Fasting insulin (mu/mL)"
+                ),
+             type = list(age ~ "continuous", 
+                         gender_desc ~ "categorical",
+                         race ~ "categorical", 
+                         smoking ~ "categorical", 
+                         PA ~ "continuous", 
+                         egfr ~ "continuous", 
+                         redmeat  ~ "continuous", 
+                         energy ~ "continuous", 
+                         glucose ~ "continuous",
+                         insulin ~ "continuous")
+          ) |>
+  gtsummary::modify_spanning_header(
+    gtsummary::all_stat_cols() ~ "Exam"
+  ) |>
+  gtsummary::as_gt() |>
+  gt::tab_options(page.orientation = "landscape") |>
+  gt::tab_style(
+    style = gt::cell_text(weight = "bold"),
+    locations = gt::cells_body(
+      columns = "label",
+      rows = label %in% bold_labels
+    )
+    ) |>
+# Bold *any* spanning headers 
+  gt::tab_style(
+    style = gt::cell_text(weight = "bold"),
+    locations = gt::cells_column_spanners()
+  ) |>
+  gt::tab_options(latex.use_longtable = TRUE)
+
+table1
+
+rm(bold_labels)
+rm(table1)
+
+
+```
+:::
+
+## Metabolome Wide Association Study 
+
+```{r}
+#| label: MWAS-info
+
+Metab_mapping <- targets::tar_read(Mapping_file)
+
+Known_metabs <- targets::tar_read(Mapping_file) |>
+  dplyr::filter(Known_Compound==1)
+
+Epi_metabs <- targets::tar_read(Obs_MWAS) |>
+  dplyr::rename(Metabolite = Metab) |>
+  dplyr::select(Metabolite, Beta,  SE,  P)
+  
+Epi_metabs_LASSO <- targets::tar_read(LASSO_final_coeffs_db) |>
+  tibble::rownames_to_column(var = "Metabolite") |>
+  dplyr::filter(Metabolite %in% Metab_mapping$Metabolite & Estimate !=0) |>
+  dplyr::rename(Penalized_coeff = Estimate) |>
+  dplyr::left_join(Epi_metabs) |>
+  dplyr::mutate(P_fdr = p.adjust(P, method="fdr")) |>
+  dplyr::left_join(Metab_mapping, 
+                   dplyr::select(Metabolite, Original_Metabolite_Name), by = dplyr::join_by(Metabolite))|>
+  dplyr::rename(temp = Metabolite) |>
+  dplyr::mutate(Metabolite = 
+                  dplyr::case_when(!is.na(Original_Metabolite_Name) ~ Original_Metabolite_Name, 
+                                   TRUE ~ temp
+                                   )
+  ) |>
+  dplyr::select(Metabolite, Penalized_coeff, Beta, SE, P, P_fdr) |>
+  dplyr::arrange(P_fdr)
+
+write.csv(Epi_metabs_LASSO, "/media/Analyses/MESA-RedMeat-Metabolites/outputs/Selected_Epi_Metabolites.csv", row.names = FALSE)
+
+Known_Epi_metabs_LASSO <- targets::tar_read(LASSO_final_coeffs_db) |>
+  tibble::rownames_to_column(var = "Metabolite") |>
+  dplyr::filter(Metabolite %in% Known_metabs$Metabolite & Estimate !=0) |>
+  dplyr::rename(Penalized_coeff = Estimate) |>
+  dplyr::left_join(Epi_metabs) |>
+  dplyr::mutate(P_fdr = p.adjust(P, method="fdr")) |>
+  dplyr::left_join(Metab_mapping, 
+                   dplyr::select(Metabolite, Original_Metabolite_Name), by = dplyr::join_by(Metabolite))|>
+   dplyr::rename(temp = Metabolite) |>
+  dplyr::mutate(Metabolite = 
+                  dplyr::case_when(!is.na(Original_Metabolite_Name) ~ Original_Metabolite_Name, 
+                                   TRUE ~ temp
+                                   )
+  ) |>
+  dplyr::select(Metabolite, Penalized_coeff, Beta, SE, P, P_fdr) 
+
+#######
+
+CWC_metabs <- targets::tar_read(CWC_MWAS) |>
+  dplyr::rename(Metabolite = Metab) |>
+  dplyr::select(Metabolite, Beta,  SE,  P)
+
+CWC_metabs_LASSO <- targets::tar_read(LASSO_CWC_final_coeffs_db) |>
+  tibble::rownames_to_column(var = "Metabolite") |>
+  dplyr::filter(Metabolite %in% Metab_mapping$Metabolite & Estimate !=0) |>
+  dplyr::rename(Penalized_coeff = Estimate) |>
+  dplyr::left_join(CWC_metabs) |>
+  dplyr::mutate(P_fdr = p.adjust(P, method="fdr")) |>
+  dplyr::left_join(Metab_mapping, 
+                   dplyr::select(Metabolite, Original_Metabolite_Name), by = dplyr::join_by(Metabolite))|>
+  dplyr::rename(temp = Metabolite,
+                Metabolite = Original_Metabolite_Name) |>
+  dplyr::select(Metabolite, Penalized_coeff, Beta, SE, P, P_fdr)
+
+write.csv(CWC_metabs_LASSO, "/media/Analyses/MESA-RedMeat-Metabolites/outputs/Selected_CWC_Metabolites.csv", row.names = FALSE)
+
+
+Known_CWC_metabs_LASSO <- targets::tar_read(LASSO_CWC_final_coeffs_db) |>
+  tibble::rownames_to_column(var = "Metabolite") |>
+  dplyr::filter(Metabolite %in% Known_metabs$Metabolite & Estimate !=0) |>
+  dplyr::rename(Penalized_coeff = Estimate) |>
+  dplyr::left_join(Epi_metabs) |>
+  dplyr::mutate(P_fdr = p.adjust(P, method="fdr")) |>
+  dplyr::left_join(Metab_mapping, 
+                   dplyr::select(Metabolite, Original_Metabolite_Name), by = dplyr::join_by(Metabolite))|>
+  dplyr::rename(temp = Metabolite,
+                Metabolite = Original_Metabolite_Name) |>
+  dplyr::select(Metabolite, Penalized_coeff, Beta, SE, P, P_fdr)
+
+Shared_metabs <- Epi_metabs_LASSO |>
+  dplyr::rename(
+    Epi_coeff = Penalized_coeff,
+    Epi_Beta = Beta,
+    Epi_SE =   SE,  
+    Epi_P = P,
+    Epi_P_fdr = P_fdr) |>
+  dplyr::full_join(CWC_metabs_LASSO |>
+  dplyr::rename(
+    CWC_coeff = Penalized_coeff,
+    CWC_Beta = Beta,
+    CWC_SE =   SE,  
+    CWC_P = P,
+    CWC_P_fdr = P_fdr),
+  by = dplyr::join_by(Metabolite))
+
+```
+
+The full results from the penalized MLM for the epidemiological / population-level / uncentered associations are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_coeffs_2026-06-24.csv).The model selected N=`{r} print(length(unique(Epi_metabs_LASSO$Metabolite)))` metabolites as an optimal set that predicted unprocessed red meat intake. The parameter estimates for these metabolites (for supplementary table 1) are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Selected_Epi_Metabolites.csv). Of these,  N=`{r} print(length(unique(Known_Epi_metabs_LASSO$Metabolite)))` were for known metabolites (i.e., identified compounds), and the relevant association statistics are available in @tbl-known-epi-metabs.
+
+The full results from the penalized MLM for the within-person/ centered associations are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_CWC_coeffs_2026-06-24.csv). The model selected N=`{r} print(length(unique(CWC_metabs_LASSO$Metabolite)))` metabolites as an optimal set that predicted unprocessed red meat intake. The parameter estimates for these metabolites (for supplementary table 1) are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Selected_Epi_Metabolites.csv). Of these,  N=`{r} print(length(unique(Known_CWC_metabs_LASSO$Metabolite)))` were for known metabolites (i.e., identified compounds), and the relevant association statistics are available in @tbl-known-CWC-metabs.
+
+\newpage
+
+::: landscape
+```{r}
+
+#| label: tbl-known-epi-metabs 
+#| tbl-cap: "Parameter Estimates for Known Metabolites Selected by the Penalized MLM as Associated with Intake of Unprocessed Red Meat in Uncenetered Analyses"
+#| cache: FALSE
+
+gt_table <-  Known_Epi_metabs_LASSO |>
+  dplyr::arrange(P_fdr) |>
+  gt::gt() |>
+  gt::cols_label(Metabolite = "Metabolite", 
+                 Penalized_coeff = "Coeff", 
+                 Beta = "Beta", 
+                 SE = "SE", 
+                P = "P value", 
+                 P_fdr = "P-FDR") |>
+  gt::fmt_number(columns = c(SE),rows = tidyselect::everything(), decimals = 2) |>
+  gt::fmt_scientific(columns = c(Beta, P, P_fdr), rows = tidyselect::everything(), decimals = 2) |>
+  #gt::tab_options(page.orientation = "landscape") |>
+  gt::as_latex()
+
+gt_table
+
+```
+
+```{r}
+
+#| label: tbl-known-CWC-metabs 
+#| tbl-cap: "Parameter Estimates for Known Metabolites Selected by the Penalized MLM as Associated with Intake of Unprocessed Red Meat in Within-Person analyses"
+#| cache: FALSE
+
+gt_table <-  Known_CWC_metabs_LASSO |>
+  dplyr::arrange(P_fdr) |>
+  gt::gt() |>
+  gt::cols_label(Metabolite = "Metabolite", 
+                 Penalized_coeff = "Coeff", 
+                 Beta = "Beta", 
+                 SE = "SE", 
+                P = "P value", 
+                 P_fdr = "P-fdr") |>
+  gt::fmt_number(columns = c(SE),rows = tidyselect::everything(), decimals = 2) |>
+  gt::fmt_scientific(columns = c(Beta, P, P_fdr), rows = tidyselect::everything(), decimals = 2) |>
+  #gt::tab_options(page.orientation = "landscape") |>
+  gt::as_latex()
+
+gt_table
+
+```
+
+\newpage
+
+```{r}
+#| label: tbl-metabolite-score-assocs
+
+Traits = targets::tar_read(Traits_long)
+
+RM_scores = targets::tar_read(RM_scores) |>
+  tidyr::drop_na(idno)
+WP_scores = targets::tar_read(WP_scores) |>
+  tidyr::drop_na(idno)
+
+dat <- RM_scores |>
+  dplyr::full_join(WP_scores, by = dplyr::join_by(idno, exam)) |>
+  dplyr::left_join(Traits, by = dplyr::join_by(idno, exam)) |>
+  dplyr::filter(exam==1 | exam==5)
+
+gtsummary::set_gtsummary_theme(
+  list("tbl_regression-chr:tidy_columns" = c("estimate", "std.error", "p.value"))
+)
+
+###########################
+#.       Glucose.         #
+###########################
+
+#Population-level Association
+
+dat2 <- dat |>
+  dplyr::mutate(score = as.numeric(scale(RepeatedMeasures_score)))
+
+
+model1 <- lmerTest::lmer(scale(rcompanion::blom(glucose)) ~ score + scale(age) + gender + race + site + scale(egfr) + smoking + scale(income) + scale(PA) + (1|idno), data = dat2)  |>
+  gtsummary::tbl_regression(include = "score",
+                            label = list("score" ~  "Fasting Glucose")
+  ) 
+rm(dat2)
+
+#Within-Person Association
+dat2 <- dat |>
+  dplyr::mutate(score = scale(WithinPerson_score))
+
+model2 <- lmerTest::lmer(scale(rcompanion::blom(glucose)) ~ score + scale(age) + gender + race + site + scale(egfr) + smoking + scale(income) + scale(PA) + (1|idno), data = dat2)  |>
+  gtsummary::tbl_regression(include = "score",
+                            label = list("score" ~  "Fasting Glucose")
+  ) 
+rm(dat2)
+
+merged_table1 <- gtsummary::tbl_merge(
+  tbls = list(model1, model2),
+  tab_spanner = c("**Population Level Association**", "**Within-Person Effect**") 
+  )
+
+rm(model1)
+rm(model2)
+
+###########################
+#.       Insulin          #
+###########################
+
+#Population-level Association
+
+dat2 <- dat |>
+  dplyr::mutate(score = as.numeric(scale(RepeatedMeasures_score)))
+
+
+model1 <- lmerTest::lmer(scale(rcompanion::blom(insulin)) ~ score + scale(age) + gender + race + site + scale(egfr) + smoking + scale(income) + scale(PA) + (1|idno), data = dat2)  |>
+  gtsummary::tbl_regression(include = "score",
+                            label = list("score" ~  "Fasting Insulin")
+  ) 
+rm(dat2)
+
+#Within-Person Association
+dat2 <- dat |>
+  dplyr::mutate(score = scale(WithinPerson_score))
+
+model2 <- lmerTest::lmer(scale(rcompanion::blom(insulin)) ~ score + scale(age) + gender + race + site + scale(egfr) + smoking + scale(income) + scale(PA) + (1|idno), data = dat2)  |>
+  gtsummary::tbl_regression(include = "score",
+                            label = list("score" ~  "Fasting Insulin")
+  ) 
+rm(dat2)
+
+merged_table2 <- gtsummary::tbl_merge(
+  tbls = list(model1, model2),
+  tab_spanner = c("**Population Level Association**", "**Within-Person Effect**") 
+  )
+
+rm(model1)
+rm(model2)
+
+###########################
+#                         #
+#.       Merge.           #
+#                         #
+###########################
+
+
+merged_table <- gtsummary::tbl_stack(
+  tbls = list(merged_table1, merged_table2) 
+  )|>
+  gtsummary::as_gt() |>
+  gt::fmt_number(
+    columns = c(estimate_1,  estimate_2,
+                std.error_1, std.error_2),
+    decimals = 3   
+  ) |>
+  gt::fmt_scientific(
+    columns = c(p.value_1, p.value_2)
+  ) |>
+  gt::tab_options(table.font.size = gt::px(12)) |>
+  gt::tab_options(page.orientation = "landscape") |>
+  gt::tab_options(latex.use_longtable = TRUE)
+
+
+
+merged_table
+
+```
+
+:::
+

@@ -80,7 +80,7 @@ repeated_measures_MWAS_function <- function(cleaned_metabs, metab_mapping,
     fixed_terms <- c(
       paste0("scale(", predictor, ")"),
       paste0("scale(", numeric_covariates, ")"),
-      factor_covariates
+      paste0("as.factor(", factor_covariates, ")")
     )
     
     rhs_fixed <- paste(fixed_terms, collapse = " + ")
