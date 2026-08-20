@@ -1,0 +1,14 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.positai
+
+references.bib
+RedMeat-TopMed-Metabolites.Rproj
+.Rhistory
+
+RedMeat-TopMed-Metabolites_cache/
+_targets/
+progress/
+script_building/
