@@ -20,7 +20,7 @@ execute:
   dir: project
 pdf-engine: latexmk
 editor: visual
-#bibliography: references.bib
+bibliography: references.bib
 ---
 
 ```{r}
@@ -359,7 +359,7 @@ dupe_metabs_table2
 ```
 
 - All metabolites that had either a unique HMDB ID, or that had a duplicated HMDB ID but had the lowest CV from all those metabolites with the same HMDB ID were retained, all others were removed from the analysis.
-- The final metabolite file contained information on N=`{r} print(final_file_info)[2] - 5` metabolites across N=`{r} final_file_info[1]` observations.
+- The final metabolite file contained information on N=`{r} print((dim(final_file_info)[2]) - 5)` metabolites across N=`{r} final_file_info[1]` observations.
 
 ### Some Unresolved Issues To Note
 
@@ -436,9 +436,7 @@ path_E5_food <- targets::tar_read(path_e5_ffq_file)
 
 - Insulin was measured in mU/L
 - Glucose was measured in mg/dL
-- HDL was measured in mg/dL
-- LDL was measured in mg/dL
-- Triglycerides was measures in mg/dL
+
 
 #### Covariates
 
@@ -453,7 +451,7 @@ path_E5_food <- targets::tar_read(path_e5_ffq_file)
 
 #### Outcomes
 
-- Fastiung glucose and insulin were continuous.
+- Fasting glucose and insulin were continuous.
 
 ## Build Final Sample
 
@@ -531,7 +529,7 @@ For each parameter (observed associations \[$\beta{\mathit{_O}{_b}{_s}}$\], and 
 
 ### Associations Between Metabolite Scores and Health
 
-We examined the associations between the two metabolite scores and health using data from exam 6, to decouple the data used for these analyses from the data used to generate the metabolite scores. Since we were restricted to using data from one exam only, we examined observed associations between each of four metabolite scores, and each of cardiometabolic disease risk factors using standard linear regression models, with the metabolite scores as the predictor and risk factor as the outcome, which was transformed using an inverse normal transformation prior to inclusion in the models. The exception was for incident diabetes, for which metabolite scores from baseline were used for all without T2D at this exam. All models included the same set of covariates used in the penalized models, specified as fixed effects.
+We examined the associations between the two metabolite scores and health using data from exams 1 and 5, using similar MLMs as above.
 
 \newpage
 
@@ -729,6 +727,8 @@ Metab_mapping <- targets::tar_read(Mapping_file)
 Known_metabs <- targets::tar_read(Mapping_file) |>
   dplyr::filter(Known_Compound==1)
 
+#######Epi model metabs
+
 Epi_metabs <- targets::tar_read(Obs_MWAS) |>
   dplyr::rename(Metabolite = Metab) |>
   dplyr::select(Metabolite, Beta,  SE,  P)
@@ -737,9 +737,9 @@ Epi_metabs_LASSO <- targets::tar_read(LASSO_final_coeffs_db) |>
   tibble::rownames_to_column(var = "Metabolite") |>
   dplyr::filter(Metabolite %in% Metab_mapping$Metabolite & Estimate !=0) |>
   dplyr::rename(Penalized_coeff = Estimate) |>
-  dplyr::left_join(Epi_metabs) |>
+  dplyr::left_join(Epi_metabs, by = dplyr::join_by(Metabolite)) |>
   dplyr::mutate(P_fdr = p.adjust(P, method="fdr")) |>
-  dplyr::left_join(Metab_mapping, 
+  dplyr::left_join(Metab_mapping |> 
                    dplyr::select(Metabolite, Original_Metabolite_Name), by = dplyr::join_by(Metabolite))|>
   dplyr::rename(temp = Metabolite) |>
   dplyr::mutate(Metabolite = 
@@ -750,25 +750,29 @@ Epi_metabs_LASSO <- targets::tar_read(LASSO_final_coeffs_db) |>
   dplyr::select(Metabolite, Penalized_coeff, Beta, SE, P, P_fdr) |>
   dplyr::arrange(P_fdr)
 
-write.csv(Epi_metabs_LASSO, "/media/Analyses/MESA-RedMeat-Metabolites/outputs/Selected_Epi_Metabolites.csv", row.names = FALSE)
+write.csv(Epi_metabs_LASSO, "/media/Analyses/MESA-RedMeat-Metabolites/outputs/Parameterized_Epi_Metabolites.csv", row.names = FALSE)
 
 Known_Epi_metabs_LASSO <- targets::tar_read(LASSO_final_coeffs_db) |>
   tibble::rownames_to_column(var = "Metabolite") |>
-  dplyr::filter(Metabolite %in% Known_metabs$Metabolite & Estimate !=0) |>
+  dplyr::filter(Metabolite %in% Metab_mapping$Metabolite & Estimate !=0 & Metabolite %in% Known_metabs$Metabolite) |>
   dplyr::rename(Penalized_coeff = Estimate) |>
-  dplyr::left_join(Epi_metabs) |>
+  dplyr::left_join(Epi_metabs, by = dplyr::join_by(Metabolite)) |>
   dplyr::mutate(P_fdr = p.adjust(P, method="fdr")) |>
-  dplyr::left_join(Metab_mapping, 
+  dplyr::left_join(Metab_mapping |> 
                    dplyr::select(Metabolite, Original_Metabolite_Name), by = dplyr::join_by(Metabolite))|>
-   dplyr::rename(temp = Metabolite) |>
+  dplyr::rename(temp = Metabolite) |>
   dplyr::mutate(Metabolite = 
                   dplyr::case_when(!is.na(Original_Metabolite_Name) ~ Original_Metabolite_Name, 
                                    TRUE ~ temp
                                    )
   ) |>
-  dplyr::select(Metabolite, Penalized_coeff, Beta, SE, P, P_fdr) 
+  dplyr::select(Metabolite, Penalized_coeff, Beta, SE, P, P_fdr) |>
+  dplyr::arrange(P_fdr)
 
-#######
+
+
+
+#######CWC model metabs
 
 CWC_metabs <- targets::tar_read(CWC_MWAS) |>
   dplyr::rename(Metabolite = Metab) |>
@@ -778,28 +782,37 @@ CWC_metabs_LASSO <- targets::tar_read(LASSO_CWC_final_coeffs_db) |>
   tibble::rownames_to_column(var = "Metabolite") |>
   dplyr::filter(Metabolite %in% Metab_mapping$Metabolite & Estimate !=0) |>
   dplyr::rename(Penalized_coeff = Estimate) |>
-  dplyr::left_join(CWC_metabs) |>
+  dplyr::left_join(CWC_metabs, by = dplyr::join_by(Metabolite)) |>
   dplyr::mutate(P_fdr = p.adjust(P, method="fdr")) |>
-  dplyr::left_join(Metab_mapping, 
+  dplyr::left_join(Metab_mapping |>
                    dplyr::select(Metabolite, Original_Metabolite_Name), by = dplyr::join_by(Metabolite))|>
-  dplyr::rename(temp = Metabolite,
-                Metabolite = Original_Metabolite_Name) |>
+   dplyr::rename(temp = Metabolite) |>
+  dplyr::mutate(Metabolite = 
+                  dplyr::case_when(!is.na(Original_Metabolite_Name) ~ Original_Metabolite_Name, 
+                                   TRUE ~ temp
+                                   )
+  ) |>
   dplyr::select(Metabolite, Penalized_coeff, Beta, SE, P, P_fdr)
 
-write.csv(CWC_metabs_LASSO, "/media/Analyses/MESA-RedMeat-Metabolites/outputs/Selected_CWC_Metabolites.csv", row.names = FALSE)
-
+write.csv(CWC_metabs_LASSO, "/media/Analyses/MESA-RedMeat-Metabolites/outputs/Parameterized_CWC_Metabolites.csv", row.names = FALSE)
 
 Known_CWC_metabs_LASSO <- targets::tar_read(LASSO_CWC_final_coeffs_db) |>
   tibble::rownames_to_column(var = "Metabolite") |>
-  dplyr::filter(Metabolite %in% Known_metabs$Metabolite & Estimate !=0) |>
+  dplyr::filter(Metabolite %in% Metab_mapping$Metabolite & Estimate !=0 & Metabolite %in% Known_metabs$Metabolite) |>
   dplyr::rename(Penalized_coeff = Estimate) |>
-  dplyr::left_join(Epi_metabs) |>
+  dplyr::left_join(CWC_metabs, by = dplyr::join_by(Metabolite)) |>
   dplyr::mutate(P_fdr = p.adjust(P, method="fdr")) |>
-  dplyr::left_join(Metab_mapping, 
+  dplyr::left_join(Metab_mapping |> 
                    dplyr::select(Metabolite, Original_Metabolite_Name), by = dplyr::join_by(Metabolite))|>
-  dplyr::rename(temp = Metabolite,
-                Metabolite = Original_Metabolite_Name) |>
-  dplyr::select(Metabolite, Penalized_coeff, Beta, SE, P, P_fdr)
+   dplyr::rename(temp = Metabolite) |>
+  dplyr::mutate(Metabolite = 
+                  dplyr::case_when(!is.na(Original_Metabolite_Name) ~ Original_Metabolite_Name, 
+                                   TRUE ~ temp
+                                   )
+  ) |>
+  dplyr::select(Metabolite, Penalized_coeff, Beta, SE, P, P_fdr) |>
+  dplyr::arrange(P_fdr)
+
 
 Shared_metabs <- Epi_metabs_LASSO |>
   dplyr::rename(
@@ -819,15 +832,14 @@ Shared_metabs <- Epi_metabs_LASSO |>
 
 ```
 
-The full results from the penalized MLM for the epidemiological / population-level / uncentered associations are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_coeffs_2026-06-24.csv).The model selected N=`{r} print(length(unique(Epi_metabs_LASSO$Metabolite)))` metabolites as an optimal set that predicted unprocessed red meat intake. The parameter estimates for these metabolites (for supplementary table 1) are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Selected_Epi_Metabolites.csv). Of these,  N=`{r} print(length(unique(Known_Epi_metabs_LASSO$Metabolite)))` were for known metabolites (i.e., identified compounds), and the relevant association statistics are available in @tbl-known-epi-metabs.
+The full results from the penalized MLM for the epidemiological / population-level / uncentered associations are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_Epi_ElasticNet_coeffs.csv).The model selected N=`{r} print(length(unique(Epi_metabs_LASSO$Metabolite)))` metabolites as an optimal set that predicted unprocessed red meat intake. The parameter estimates for these metabolites (for supplementary table 1) are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Parameterized_Epi_Metabolites.csv). Of these,  N=`{r} print(length(unique(Known_CWC_metabs_LASSO$Metabolite)))` were for known metabolites (i.e., identified compounds), and the relevant association statistics are available in @tbl-known-epi-metabs.
 
-The full results from the penalized MLM for the within-person/ centered associations are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_CWC_coeffs_2026-06-24.csv). The model selected N=`{r} print(length(unique(CWC_metabs_LASSO$Metabolite)))` metabolites as an optimal set that predicted unprocessed red meat intake. The parameter estimates for these metabolites (for supplementary table 1) are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Selected_Epi_Metabolites.csv). Of these,  N=`{r} print(length(unique(Known_CWC_metabs_LASSO$Metabolite)))` were for known metabolites (i.e., identified compounds), and the relevant association statistics are available in @tbl-known-CWC-metabs.
+The full results from the penalized MLM for the within-person/ centered associations are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Redmeat_CWC_ElasticNet_coeffs.csv). The model selected N=`{r} print(length(unique(CWC_metabs_LASSO$Metabolite)))` metabolites as an optimal set that predicted unprocessed red meat intake. The parameter estimates for these metabolites (for supplementary table 1) are available [here](https://github.com/LekkiWood/RedMeat-TopMed-Metabolites/blob/main/outputs/Parameterized_CWC_Metabolites.csv). Of these,  N=`{r} print(length(unique(Known_CWC_metabs_LASSO$Metabolite)))` were for known metabolites (i.e., identified compounds), and the relevant association statistics are available in @tbl-known-CWC-metabs.
 
 \newpage
 
 ::: landscape
 ```{r}
-
 #| label: tbl-known-epi-metabs 
 #| tbl-cap: "Parameter Estimates for Known Metabolites Selected by the Penalized MLM as Associated with Intake of Unprocessed Red Meat in Uncenetered Analyses"
 #| cache: FALSE
@@ -842,16 +854,20 @@ gt_table <-  Known_Epi_metabs_LASSO |>
                 P = "P value", 
                  P_fdr = "P-FDR") |>
   gt::fmt_number(columns = c(SE),rows = tidyselect::everything(), decimals = 2) |>
-  gt::fmt_scientific(columns = c(Beta, P, P_fdr), rows = tidyselect::everything(), decimals = 2) |>
-  #gt::tab_options(page.orientation = "landscape") |>
+  gt::fmt_scientific(columns = c(Penalized_coeff, Beta, P, P_fdr), rows = tidyselect::everything(), decimals = 2) |>
+  gt::tab_options(page.orientation = "landscape") |>
+  gt::tab_options(latex.use_longtable = TRUE) |>
   gt::as_latex()
 
 gt_table
 
 ```
 
-```{r}
+:::
 
+::: landscape
+
+```{r}
 #| label: tbl-known-CWC-metabs 
 #| tbl-cap: "Parameter Estimates for Known Metabolites Selected by the Penalized MLM as Associated with Intake of Unprocessed Red Meat in Within-Person analyses"
 #| cache: FALSE
@@ -866,8 +882,8 @@ gt_table <-  Known_CWC_metabs_LASSO |>
                 P = "P value", 
                  P_fdr = "P-fdr") |>
   gt::fmt_number(columns = c(SE),rows = tidyselect::everything(), decimals = 2) |>
-  gt::fmt_scientific(columns = c(Beta, P, P_fdr), rows = tidyselect::everything(), decimals = 2) |>
-  #gt::tab_options(page.orientation = "landscape") |>
+  gt::fmt_scientific(columns = c(Penalized_coeff, Beta, P, P_fdr), rows = tidyselect::everything(), decimals = 2) |>
+  gt::tab_options(page.orientation = "landscape") |>
   gt::as_latex()
 
 gt_table

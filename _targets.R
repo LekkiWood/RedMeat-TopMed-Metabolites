@@ -639,7 +639,7 @@ list(
                                                        metab_mapping = Mapping_file,
                                                        traits_db = Traits_long, 
                                                        numeric_covariates = c("age", "PA", "egfr", "energy", "income", "education"),
-                                                       factor_covariates = c("gender", "race", "smoking", "exam"), 
+                                                       factor_covariates = c("gender", "race", "smoking", "exam", "DM"), 
                                                        predictor = "redmeat_cwc_z",
                                                        lasso_res1 = LASSO_final_coeffs_db,
                                                        lasso_res2 = LASSO_CWC_final_coeffs_db)
